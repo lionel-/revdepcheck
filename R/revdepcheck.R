@@ -173,15 +173,43 @@ revdep_run <- function(pkg = ".", quiet = TRUE,
                        num_workers = 1, bioc = TRUE) {
 
   pkg <- pkg_check(pkg)
-  pkgname <- pkg_name(pkg)
 
   if (!inherits(timeout, "difftime")) {
     timeout <- as.difftime(timeout, units = "secs")
   }
 
-  todo <- db_todo(pkg)
-  status("CHECK", paste0(length(todo), " packages"))
   start <- Sys.time()
+
+  parents <- db_parents(pkg)
+  if (length(parents) > 1L) {
+    for (i in seq_along(parents)) {
+      parent <- parents[[i]]
+      todo <- db_todo(pkg, parent = parent)
+      header1 <- sprintf("CHECK %s (%s/%s)", parent, i, length(parents))
+      header2 <- paste0(length(todo), " packages")
+      status(header1, header2)
+      revdep_run_one(pkg, todo, quiet, timeout, num_workers, bioc)
+    }
+  } else {
+    todo <- db_todo(pkg)
+    status("CHECK", paste0(length(todo), " packages"))
+    revdep_run_one(pkg, todo, quiet, timeout, num_workers, bioc)
+  }
+
+  end <- Sys.time()
+
+  status <- report_status(pkg)
+  cat_line(green("OK: "), status$ok)
+  cat_line(red("BROKEN: "), status$broken)
+  cat_line("Total time: ", vague_dt(end - start, format = "short"))
+
+  db_metadata_set(pkg, "todo", "report")
+  invisible()
+}
+revdep_run_one <- function(pkg, todo, quiet = TRUE,
+                           timeout = as.difftime(10, units = "mins"),
+                           num_workers = 1, bioc = TRUE) {
+  pkgname <- pkg_name(pkg)
 
   state <- list(
     options = list(
@@ -197,15 +225,6 @@ revdep_run <- function(pkg = ".", quiet = TRUE,
   )
 
   run_event_loop(state)
-  end <- Sys.time()
-
-  status <- report_status(pkg)
-  cat_line(green("OK: "), status$ok)
-  cat_line(red("BROKEN: "), status$broken)
-  cat_line("Total time: ", vague_dt(end - start, format = "short"))
-
-  db_metadata_set(pkg, "todo", "report")
-  invisible()
 }
 
 revdep_final_report <- function(pkg = ".") {

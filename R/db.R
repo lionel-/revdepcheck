@@ -146,10 +146,19 @@ db_list <- function(package) {
 
 #' @importFrom DBI dbGetQuery
 
-db_todo <- function(pkgdir) {
+db_todo <- function(pkgdir, parent = NULL) {
   db <- db(pkgdir)
 
-  dbGetQuery(db, "SELECT DISTINCT package FROM todo")[[1]]
+  if (is_null(parent)) {
+    query <- "SELECT DISTINCT package FROM todo"
+  } else {
+    query <- sqlInterpolate(db,
+      "SELECT DISTINCT package FROM todo WHERE parent = ?parent",
+      parent = parent
+    )
+  }
+
+  dbGetQuery(db, query)[[1]]
 }
 
 #' @importFrom DBI dbWriteTable
@@ -165,6 +174,10 @@ db_todo_add <- function(pkgdir, packages) {
   dbWriteTable(db, "todo", df, append = TRUE)
 
   invisible(pkgdir)
+}
+
+db_parents <- function(pkgdir) {
+  dbGetQuery(db(pkgdir), "SELECT DISTINCT parent FROM todo")[[1]]
 }
 
 #' @importFrom DBI dbExecute sqlInterpolate
