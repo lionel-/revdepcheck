@@ -188,12 +188,12 @@ revdep_run <- function(pkg = ".", quiet = TRUE,
       header1 <- sprintf("CHECK %s (%s/%s)", parent, i, length(parents))
       header2 <- paste0(length(todo), " packages")
       status(header1, header2)
-      revdep_run_one(pkg, todo, quiet, timeout, num_workers, bioc)
+      revdep_run_one(pkg, todo, parent, quiet, timeout, num_workers, bioc)
     }
   } else {
     todo <- db_todo(pkg)
     status("CHECK", paste0(length(todo), " packages"))
-    revdep_run_one(pkg, todo, quiet, timeout, num_workers, bioc)
+    revdep_run_one(pkg, todo, parents[[1]], quiet, timeout, num_workers, bioc)
   }
 
   end <- Sys.time()
@@ -206,7 +206,7 @@ revdep_run <- function(pkg = ".", quiet = TRUE,
   db_metadata_set(pkg, "todo", "report")
   invisible()
 }
-revdep_run_one <- function(pkg, todo, quiet = TRUE,
+revdep_run_one <- function(pkg, todo, parent = NULL, quiet = TRUE,
                            timeout = as.difftime(10, units = "mins"),
                            num_workers = 1, bioc = TRUE) {
   pkgname <- pkg_name(pkg)
@@ -217,11 +217,14 @@ revdep_run_one <- function(pkg, todo, quiet = TRUE,
       pkgname = pkgname,
       quiet = quiet,
       timeout = timeout,
-      num_workers = num_workers),
+      num_workers = num_workers
+    ),
     packages = data.frame(
       package = todo,
       state = if (length(todo)) "todo" else character(),
-      stringsAsFactors = FALSE)
+      stringsAsFactors = FALSE
+    ),
+    parent = parent
   )
 
   run_event_loop(state)

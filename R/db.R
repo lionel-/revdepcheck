@@ -50,6 +50,7 @@ db_setup <- function(package) {
   dbExecute(db,
     "CREATE TABLE revdeps (
       package TEXT,
+      parent TEXT,
       version TEXT,
       maintainer TEXT,
       status TEXT,         -- PREPERROR, INSTALLERROR, ERROR, WARNING, OK
@@ -182,8 +183,9 @@ db_parents <- function(pkgdir) {
 
 #' @importFrom DBI dbExecute sqlInterpolate
 
-db_insert <- function(pkgdir, package, version = NULL, maintainer = NULL,
-                      status, which = c("old", "new"), duration, starttime,
+db_insert <- function(pkgdir, package, parent, version = NULL,
+                      maintainer = NULL, status,
+                      which = c("old", "new"), duration, starttime,
                       result, summary) {
 
   which <- match.arg(which)
@@ -206,19 +208,24 @@ db_insert <- function(pkgdir, package, version = NULL, maintainer = NULL,
   )
 
   q <- "INSERT INTO revdeps
-         (package, version, maintainer, status, which, duration,
-          starttime, result, summary) VALUES
-         (?package, ?version, ?maintainer, ?status, ?which, ?duration,
-          ?starttime, ?result, ?summary)"
+         (package, parent, version, maintainer, status, which,
+          duration, starttime, result, summary) VALUES
+         (?package, ?parent, ?version, ?maintainer, ?status, ?which,
+          ?duration, ?starttime, ?result, ?summary)"
 
 
   ## TODO: better way to get version, maintainer, so they are never NULL
   dbExecute(db,
     sqlInterpolate(db, q,
-      package = package, version = version %|0|% "",
+      package = package,
+      parent = parent,
+      version = version %|0|% "",
       maintainer = maintainer %|0|% "",
-      status = status, which = which, duration = duration,
-      starttime = as.character(starttime), result = result,
+      status = status,
+      which = which,
+      duration = duration,
+      starttime = as.character(starttime),
+      result = result,
       summary = summary %|0|% ""
     )
   )

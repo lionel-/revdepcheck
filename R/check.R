@@ -149,11 +149,15 @@ check_done <- function(state, worker) {
   description <- desc::desc(text = chkres$description)
   maintainer <- description$get_maintainer()
 
-  db_insert(
-    state$options$pkgdir, worker$package,
-    version = chkres$version, maintainer = maintainer, status = status,
-    which = my_task$args[[2]], duration = duration,
-    starttime = as.character(starttime), result = unclass(toJSON(chkres)),
+  db_insert(state$options$pkgdir, worker$package,
+    parent = state$parent,
+    version = chkres$version,
+    maintainer = maintainer,
+    status = status,
+    which = my_task$args[[2]],
+    duration = duration,
+    starttime = as.character(starttime),
+    result = unclass(toJSON(chkres)),
     summary = unclass(toJSON(summary))
   )
 

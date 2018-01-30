@@ -124,10 +124,14 @@ deps_install_done <- function(state, worker) {
     )
 
     for (which in c("old", "new")) {
-      db_insert(
-        state$options$pkgdir, worker$package, version = NULL,
-        status = status, which = which, duration = duration,
-        starttime = starttime, result = unclass(toJSON(result)),
+      db_insert(state$options$pkgdir, worker$package,
+        parent = state$parent,
+        version = NULL,
+        status = status,
+        which = which,
+        duration = duration,
+        starttime = starttime,
+        result = unclass(toJSON(result)),
         summary = NULL
       )
     }
