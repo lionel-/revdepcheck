@@ -29,6 +29,11 @@ cran_revdeps <- function(packages,
     new_revdeps <- setdiff(full_revdeps, omit)
     omit <- c(omit, new_revdeps)
     revdeps[[i]] <- set_names(new_revdeps, rep(pkg, length(new_revdeps)))
+
+    # Add max 2 revdeps per package when debugging
+    if (exists("__REVDEPCHECK_DEBUG")) {
+      revdeps[[i]] <- revdeps[[i]][seq2(1L, min(2L, length(new_revdeps)))]
+    }
   }
 
   do.call(base::c, revdeps)
