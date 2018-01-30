@@ -62,7 +62,7 @@ db_setup <- function(package) {
   )
   dbExecute(db, "CREATE INDEX idx_revdeps_package ON revdeps(package)")
 
-  dbExecute(db, "CREATE TABLE todo (package TEXT)")
+  dbExecute(db, "CREATE TABLE todo (package TEXT, parent TEXT)")
 
   invisible(db)
 }
@@ -157,7 +157,10 @@ db_todo <- function(pkgdir) {
 db_todo_add <- function(pkgdir, packages) {
   db <- db(pkgdir)
 
-  df <- data.frame(package = packages, stringsAsFactors = FALSE)
+  df <- data.frame(stringsAsFactors = FALSE,
+    package = packages,
+    parent = names(packages)
+  )
   row.names(df) <- NULL
   dbWriteTable(db, "todo", df, append = TRUE)
 

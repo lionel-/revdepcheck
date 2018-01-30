@@ -2,7 +2,7 @@
 #' @importFrom remotes bioc_install_repos
 #' @importFrom crancache available_packages
 
-cran_revdeps <- function(package, dependencies = TRUE, bioc = FALSE) {
+cran_revdeps_one <- function(package, dependencies = TRUE, bioc = FALSE) {
   stopifnot(is_string(package))
   repos <- get_repos(bioc)
 
@@ -14,6 +14,24 @@ cran_revdeps <- function(package, dependencies = TRUE, bioc = FALSE) {
 
   pkgs <- unname(allpkgs[rd, "Package"])
   pkgs[order(tolower(pkgs))]
+}
+
+cran_revdeps <- function(packages,
+                         omit = NULL,
+                         dependencies = c("Depends", "Imports",
+                                          "Suggests", "LinkingTo"),
+                         bioc = TRUE) {
+  revdeps <- rep_named(names(packages), list(NULL))
+
+  for (i in seq_along(packages)) {
+    pkg <- packages[[i]]
+    full_revdeps <- cran_revdeps_one(pkg, dependencies, bioc = bioc)
+    new_revdeps <- setdiff(full_revdeps, omit)
+    omit <- c(omit, new_revdeps)
+    revdeps[[i]] <- set_names(new_revdeps, rep(pkg, length(new_revdeps)))
+  }
+
+  do.call(base::c, revdeps)
 }
 
 get_repos <- function(bioc) {
