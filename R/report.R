@@ -31,13 +31,15 @@ revdep_report_summary <- function(pkg = ".", file = "") {
   cat_kable(report_libraries(pkg), file = file)
 
   revdeps_list <- report_revdeps(pkg)
+  cat_header("Revdeps", file = file)
 
-  if (length(revdeps_list) == 1L) {
-    cat_header("Revdeps", file = file)
-    revdep_report_one_summary(revdeps_list[[1]], file)
-  } else {
-    for (parent in names(revdeps_list)) {
-      cat_header(sprintf("Revdeps (%s)", parent), file = file)
+  pkg_name <- pkg_name(pkg)
+  revdep_report_one_summary(revdeps_list[[pkg_name]], file)
+
+  if (length(revdeps_list) > 1L) {
+    parents <- setdiff(names(revdeps_list), pkg_name)
+    for (parent in parents) {
+      cat_header(sprintf("Revdeps  \u2014  %s", parent), file = file)
       revdep_report_one_summary(revdeps_list[[parent]], file)
     }
   }
