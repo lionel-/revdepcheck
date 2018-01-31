@@ -30,9 +30,22 @@ revdep_report_summary <- function(pkg = ".", file = "") {
   cat_header("Dependencies", file = file)
   cat_kable(report_libraries(pkg), file = file)
 
-  cat_header("Revdeps", file = file)
-  revdeps <- report_revdeps(pkg)
+  revdeps_list <- report_revdeps(pkg)
 
+  if (length(revdeps_list) == 1L) {
+    cat_header("Revdeps", file = file)
+    revdep_report_one_summary(revdeps_list[[1]], file)
+  } else {
+    for (parent in names(revdeps_list)) {
+      cat_header(sprintf("Revdeps (%s)", parent), file = file)
+      revdep_report_one_summary(revdeps_list[[parent]], file)
+    }
+  }
+
+  invisible()
+}
+
+revdep_report_one_summary <- function(revdeps, file) {
   status <- revdeps$status
   revdeps$status <- NULL
   broken <- status == "-"
@@ -42,7 +55,6 @@ revdep_report_summary <- function(pkg = ".", file = "") {
   revdep_report_section("Broken", revdeps[broken, ], file = file)
   revdep_report_section("All", revdeps, file = file)
 
-  invisible()
 }
 
 revdep_report_section <- function(title, rows, file) {
@@ -255,8 +267,6 @@ report_status <- function(pkg = ".") {
 }
 
 report_revdeps <- function(pkg = ".") {
-  comparisons <- db_results(pkg, NULL)
-
   make_summary <- function(x, type) {
     rows <- x$cmp[x$cmp$type == type, , drop = FALSE]
 
@@ -276,21 +286,24 @@ report_revdeps <- function(pkg = ".") {
     paste0("[", pkg, "](problems.md#", slug, ")")
   }
 
-  n_issues <- map_int(comparisons, function(x) sum(x$cmp$change %in% c(0, 1)))
+  results <- db_results_by_parent(pkg, NULL)
+  lapply(results, function(comparisons) {
+    n_issues <- map_int(comparisons, function(x) sum(x$cmp$change %in% c(0, 1)))
 
-  status <-  map_chr(comparisons, rcmdcheck_status)
-  pkgname <- map_chr(comparisons, "[[", "package")
+    status <-  map_chr(comparisons, rcmdcheck_status)
+    pkgname <- map_chr(comparisons, "[[", "package")
 
-  data.frame(
-    status = status,
-    package = ifelse(n_issues > 0, problem_link(pkgname), pkgname),
-    version = map_chr(comparisons, rcmdcheck_version),
-    error = map_chr(comparisons, make_summary, "error"),
-    warning = map_chr(comparisons, make_summary, "warning"),
-    note = map_chr(comparisons, make_summary, "note"),
-    stringsAsFactors = FALSE,
-    check.names = FALSE
-  )
+    data.frame(
+      status = status,
+      package = ifelse(n_issues > 0, problem_link(pkgname), pkgname),
+      version = map_chr(comparisons, rcmdcheck_version),
+      error = map_chr(comparisons, make_summary, "error"),
+      warning = map_chr(comparisons, make_summary, "warning"),
+      note = map_chr(comparisons, make_summary, "note"),
+      stringsAsFactors = FALSE,
+      check.names = FALSE
+    )
+  })
 }
 
 # Styling -----------------------------------------------------------------
