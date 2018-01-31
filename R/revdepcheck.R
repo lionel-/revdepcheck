@@ -194,6 +194,9 @@ revdep_run <- function(pkg = ".", quiet = TRUE,
       status(header1, header2)
       revdep_run_one(pkg, todo, parent, count, quiet, timeout, num_workers, bioc)
       count <- c(count[[1]] + length(todo), total)
+      if (i != length(parents)) {
+        cat("\n")
+      }
     }
   } else {
     status("CHECK", paste0(length(flat_todo), " packages"))
