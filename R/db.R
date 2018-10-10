@@ -167,9 +167,28 @@ db_todo <- function(pkgdir, parent = NULL) {
 db_todo_add <- function(pkgdir, packages) {
   db <- db(pkgdir)
 
+  parent <- names(packages)
+
+  # Find parent if it exists
+  if (is.null(parent)) {
+    pkgs_quoted <- paste(DBI::dbQuoteString(db, packages), collapse = ", ")
+    pkgs_quoted <- paste0("(", pkgs_quoted, ")")
+
+    db_parents <- dbGetQuery(db, paste(
+      "SELECT DISTINCT package, parent",
+      "FROM revdeps",
+      "WHERE package IN", pkgs_quoted
+    ))
+    parent_exists <- packages %in% db_parents$package
+
+    # FIXME: Should default parent be "" instead of package name?
+    parent <- names2(packages)
+    parent[parent_exists] <- db_parents$parent[parent_exists]
+  }
+
   df <- data.frame(stringsAsFactors = FALSE,
     package = packages,
-    parent = names(packages)
+    parent = parent
   )
   row.names(df) <- NULL
   dbWriteTable(db, "todo", df, append = TRUE)
