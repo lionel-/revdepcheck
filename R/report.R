@@ -30,33 +30,21 @@ revdep_report_summary <- function(pkg = ".", file = "") {
   cat_header("Dependencies", file = file)
   cat_kable(report_libraries(pkg), file = file)
 
-  revdeps_list <- report_revdeps(pkg)
-  cat_header("Revdeps", file = file)
+  revdeps <- report_revdeps(pkg)
+  revdeps <- do.call("rbind", revdeps)
 
-  pkg_name <- pkg_name(pkg)
-  revdep_report_one_summary(revdeps_list[[pkg_name]], file)
-
-  if (length(revdeps_list) > 1L) {
-    parents <- setdiff(names(revdeps_list), pkg_name)
-    for (parent in parents) {
-      cat_header(sprintf("Revdeps  \u2014  %s", parent), file = file)
-      revdep_report_one_summary(revdeps_list[[parent]], file)
-    }
-  }
-
-  invisible()
-}
-
-revdep_report_one_summary <- function(revdeps, file) {
   status <- revdeps$status
   revdeps$status <- NULL
   broken <- status == "-"
   failed <- !(status %in% c("+", "-"))
 
+  cat_header("Revdeps", file = file)
+
   revdep_report_section("Couldn't check", revdeps[failed, ], file = file)
   revdep_report_section("Broken", revdeps[broken, ], file = file)
   revdep_report_section("All", revdeps, file = file)
 
+  invisible()
 }
 
 revdep_report_section <- function(title, rows, file) {
@@ -289,13 +277,16 @@ report_revdeps <- function(pkg = ".") {
   }
 
   results <- db_results_by_parent(pkg, NULL)
-  lapply(results, function(comparisons) {
+  parents <- names(results)
+
+  out <- map2(names(results), results, function(parent, comparisons) {
     n_issues <- map_int(comparisons, function(x) sum(x$cmp$change %in% c(0, 1)))
 
     status <-  map_chr(comparisons, rcmdcheck_status)
     pkgname <- map_chr(comparisons, "[[", "package")
 
     data.frame(
+      parent = parent,
       status = status,
       package = ifelse(n_issues > 0, problem_link(pkgname), pkgname),
       version = map_chr(comparisons, rcmdcheck_version),
@@ -306,6 +297,7 @@ report_revdeps <- function(pkg = ".") {
       check.names = FALSE
     )
   })
+  set_names(out, parents)
 }
 
 # Styling -----------------------------------------------------------------
