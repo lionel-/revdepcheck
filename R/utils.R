@@ -99,3 +99,7 @@ flatten_names <- function(x) {
   })
   unname(x)
 }
+
+bang <- function(expr) {
+  eval_tidy(enquo(expr), caller_env())
+}

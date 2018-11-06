@@ -6,13 +6,32 @@ pkgs_revdeps <- function(package,
                          dependencies = c("Depends", "Imports",
                                           "Suggests", "LinkingTo"),
                          bioc = TRUE) {
-  stopifnot(is_string(package))
-  repos <- get_repos(bioc = bioc)
+  stopifnot(is_character(package))
+  n <- length(package)
 
+  if (n == 0) {
+    return(tibble::tibble(.package = chr()))
+  }
+
+  repos <- get_repos(bioc = bioc)
+  if (n == 1) {
+    data <- pkgs_revdeps_data(repos, package, dependencies)
+    return(data)
+  }
+
+  pkgs_data <- map(set_names(package), pkgs_revdeps_data, repos = repos, dependencies)
+  data <- bang(rbind(!!!pkgs_data))
+
+  group <- imap(pkgs_data, function(df, n) rep_len(n, NROW(df)))
+  group <- bang(c(!!!unname(group)))
+
+  tibble::tibble(group = group, !!!data)
+}
+
+pkgs_revdeps_data <- function(repos, package, dependencies) {
   pkgs <- flatten_names(map(repos, get_packages, package, dependencies))
   pkgs <- map(pkgs, tibble::enframe, name = "repo", value = ".package")
-
-  exec("rbind", !!!pkgs)
+  bang(rbind(!!!pkgs))
 }
 
 get_repos <- function(bioc) {
