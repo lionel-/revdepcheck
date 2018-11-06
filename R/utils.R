@@ -120,6 +120,32 @@ merge_ <- function(x, y, by, ...) {
   tibble::as_tibble(out)
 }
 
+# Only supports `by` of length 1
+nest_join <- function(x, y, by, name = "y") {
+  stopifnot(
+    is_character(by),
+    length(by) == 1L,
+    all(by %in% names(x)),
+    all(by %in% names(y))
+  )
+  x <- tibble::as_tibble(x)
+  y <- tibble::as_tibble(y)
+
+  inds <- map(y[[by]], function(i) which(x[[by]] == i))
+  n <- length(inds)
+
+  y_nested <- y[-match(by, names(y))]
+  ptype <- y_nested[int(), ]
+
+  out <- rep_len(list(ptype), n)
+  for (i in seq_len(n)) {
+    out[inds[[i]]] <- list(y_nested[i, ])
+  }
+
+  out <- cbind(x, tibble::tibble(!!name := out))
+  tibble::as_tibble(out)
+}
+
 groups_join <- function(packages, db) {
   x <- unduplicate(packages)
   y <- db_groups(db)
