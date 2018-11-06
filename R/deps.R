@@ -122,6 +122,7 @@ pkgs_validate <- function(packages) {
 }
 
 pkgs_groups <- function(packages) {
-  stopifnot(is.data.frame(packages))
-  packages[names(packages) != "package"]
+  packages <- tibble::as.tibble(packages)
+  packages <- packages[names(packages) != "package"]
+  unduplicate(packages)
 }

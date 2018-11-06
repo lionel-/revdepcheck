@@ -49,11 +49,14 @@ test_that("pkgs_validate() removes duplicated rows", {
   expect_identical(out, exp)
 })
 
-test_that("pkgs_groups() returns groups", {
+test_that("pkgs_groups() returns unique groups", {
   expect_length(pkgs_groups(data.frame(package = "foo")), 0)
 
-  data <- data.frame(repo = c("CRAN", "bioc"), package = c("foo", "bar"))
-  expect_identical(pkgs_groups(data), data.frame(repo = c("CRAN", "bioc")))
+  data <- tibble::tibble(repo = c("CRAN", "bioc"), package = c("foo", "bar"))
+  expect_identical(pkgs_groups(data), tibble::tibble(repo = c("CRAN", "bioc")))
+
+  data <- tibble::tibble(repo = c("CRAN", "bioc", "CRAN"), package = c("foo", "bar", "baz"))
+  expect_identical(pkgs_groups(data), tibble::tibble(repo = c("CRAN", "bioc")))
 })
 
 test_that("pkgs_revdeps() returns tibble", {
