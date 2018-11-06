@@ -164,29 +164,19 @@ db_todo_add <- function(pkgdir, packages) {
   db <- db(pkgdir)
   data <- pkgs_validate(packages)
 
-  todo <- data[".package"]
-  dbWriteTable(db, "todo", prepare_write(todo), append = TRUE)
+  todo <- data["package"]
+  dbWriteTable(db, "todo", todo, append = TRUE)
 
   # Merge new groups (if any) and known groups
   groups <- groups_join(data, db)
-  dbWriteTable(db, "groups", prepare_write(groups), overwrite = TRUE)
+  dbWriteTable(db, "groups", groups, overwrite = TRUE)
 
   invisible(pkgdir)
 }
 
 db_groups <- function(pkgdir) {
   groups <- dbGetQuery(db(pkgdir), "SELECT DISTINCT * FROM groups")
-  tibble::as_tibble(prepare_read(groups))
-}
-prepare_read <- function(data) {
-  to_flip <- names(data) == "package"
-  names(data)[to_flip] <- ".package"
-  data
-}
-prepare_write <- function(data) {
-  to_flip <- names(data) == ".package"
-  names(data)[to_flip] <- "package"
-  data
+  tibble::as_tibble(groups)
 }
 
 #' @importFrom DBI dbExecute sqlInterpolate
@@ -298,7 +288,7 @@ db_results_by_group <- function(pkg, revdeps = NULL) {
 }
 db_raw_results_by_group <- function(pkg, revdeps = NULL) {
   res <- db_raw_results(pkg, revdeps)
-  groups <- prepare_write(db_groups(pkg))
+  groups <- db_groups(pkg)
 
   # Join results to group data and transform the results to a list
   # indexed by groups of results indexed by old/new

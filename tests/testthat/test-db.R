@@ -42,17 +42,17 @@ test_that("db_insert() removes package from `todo`", {
   expect_identical(db_todo(":memory:"), "a")
 })
 
-test_that("default group table has `.package` column", {
+test_that("default group table has `package` column", {
   db_setup(":memory:")
   db_todo_add(":memory:", c("a", "b"))
   expect_identical(sort(db_todo(":memory:")), c("a", "b"))
-  expect_identical(db_groups(":memory:"), tibble::tibble(.package = c("a", "b")))
+  expect_identical(db_groups(":memory:"), tibble::tibble(package = c("a", "b")))
 })
 
 test_that("group metadata is set", {
   db_setup(":memory:")
 
-  groups <- tibble::tibble(group = c("g1", "g2", "g1"), .package = c("a", "b", "c"))
+  groups <- tibble::tibble(group = c("g1", "g2", "g1"), package = c("a", "b", "c"))
   db_todo_add(":memory:", groups)
 
   expect_identical(sort(db_todo(":memory:")), c("a", "b", "c"))
@@ -62,7 +62,7 @@ test_that("group metadata is set", {
 test_that("existing groups are checked when adding ungrouped packages", {
   db_setup(":memory:")
 
-  groups <- tibble::tibble(group = c("g1", "g2", "g1"), .package = c("a", "b", "c"))
+  groups <- tibble::tibble(group = c("g1", "g2", "g1"), package = c("a", "b", "c"))
   db_todo_add(":memory:", groups)
 
   db_insert(":memory:",

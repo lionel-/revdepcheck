@@ -10,7 +10,7 @@ pkgs_revdeps <- function(package,
   n <- length(package)
 
   if (n == 0) {
-    return(tibble::tibble(.package = chr()))
+    return(tibble::tibble(package = chr()))
   }
 
   repos <- get_repos(bioc = bioc)
@@ -30,7 +30,7 @@ pkgs_revdeps <- function(package,
 
 pkgs_revdeps_data <- function(repos, package, dependencies) {
   pkgs <- flatten_names(map(repos, get_packages, package, dependencies))
-  pkgs <- map(pkgs, tibble::enframe, name = "repo", value = ".package")
+  pkgs <- map(pkgs, tibble::enframe, name = "repo", value = "package")
   pkgs <- bang(rbind(!!!pkgs))
 
   if (is_true(peek_option("revdepcheck__limit_revdeps"))) {
@@ -106,22 +106,22 @@ parse_deps <- function(deps) {
 
 pkgs_validate <- function(packages) {
   if (is_character(packages)) {
-    data <- tibble::tibble(.package = packages)
+    data <- tibble::tibble(package = packages)
     return(data)
   }
 
   if (!is.data.frame(packages)) {
     abort("`packages` must be a character vector or a data frame")
   }
-  if (!has_name(packages, ".package")) {
-    abort("`packages` must contain a `.package` column")
+  if (!has_name(packages, "package")) {
+    abort("`packages` must contain a `package` column")
   }
 
   packages <- tibble::as_tibble(packages)
-  unduplicate(packages, ".package")
+  unduplicate(packages, "package")
 }
 
 pkgs_groups <- function(packages) {
   stopifnot(is.data.frame(packages))
-  packages[names(packages) != ".package"]
+  packages[names(packages) != "package"]
 }
