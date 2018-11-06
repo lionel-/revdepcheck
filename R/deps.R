@@ -111,9 +111,7 @@ pkgs_validate <- function(packages) {
   }
 
   packages <- tibble::as_tibble(packages)
-
-  dups <- duplicated(packages$.package)
-  packages[!dups, ]
+  unduplicate(packages, ".package")
 }
 
 pkgs_groups <- function(packages) {

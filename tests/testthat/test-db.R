@@ -30,7 +30,8 @@ test_that("db_insert() removes package from `todo`", {
   db_setup(":memory:")
   db_todo_add(":memory:", c("a", "b"))
 
-  db_insert(":memory:", "b", "",
+  db_insert(":memory:",
+    package = "b",
     status = "OK",
     duration = 0,
     starttime = 0,
@@ -41,29 +42,31 @@ test_that("db_insert() removes package from `todo`", {
   expect_identical(db_todo(":memory:"), "a")
 })
 
-test_that("the default group is the empty string", {
+test_that("default group table has `.package` column", {
   db_setup(":memory:")
   db_todo_add(":memory:", c("a", "b"))
-
   expect_identical(sort(db_todo(":memory:")), c("a", "b"))
-  expect_identical(db_groups(":memory:"), "")
+  expect_identical(db_groups(":memory:"), tibble::tibble(.package = c("a", "b")))
 })
 
 test_that("group metadata is set", {
   db_setup(":memory:")
-  db_todo_add(":memory:", c(group1 = "a", group2 = "b", group1 = "c"))
+
+  groups <- tibble::tibble(group = c("g1", "g2", "g1"), .package = c("a", "b", "c"))
+  db_todo_add(":memory:", groups)
 
   expect_identical(sort(db_todo(":memory:")), c("a", "b", "c"))
-  expect_identical(sort(db_groups(":memory:")), c("group1", "group2"))
-  expect_identical(sort(db_todo(":memory:", "group1")), c("a", "c"))
-  expect_identical(sort(db_todo(":memory:", "group2")), "b")
+  expect_identical(db_groups(":memory:"), groups)
 })
 
 test_that("existing groups are checked when adding ungrouped packages", {
-  db <- db_setup(":memory:")
-  db_todo_add(":memory:", c(group1 = "a", group2 = "b", group1 = "c"))
+  db_setup(":memory:")
 
-  db_insert(":memory:", "b", "group2",
+  groups <- tibble::tibble(group = c("g1", "g2", "g1"), .package = c("a", "b", "c"))
+  db_todo_add(":memory:", groups)
+
+  db_insert(":memory:",
+    package = "b",
     status = "OK",
     duration = 0,
     starttime = 0,
@@ -74,5 +77,4 @@ test_that("existing groups are checked when adding ungrouped packages", {
 
   db_todo_add(":memory:", "b")
   expect_identical(sort(db_todo(":memory:")), c("a", "b", "c"))
-  expect_identical(sort(db_todo(":memory:", "group2")), "b")
 })

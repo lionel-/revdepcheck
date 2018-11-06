@@ -103,3 +103,45 @@ flatten_names <- function(x) {
 bang <- function(expr) {
   eval_tidy(enquo(expr), caller_env())
 }
+
+full_join <- function(x, y, by) {
+  out <- merge(x, y, by, all.x = TRUE, all.y = TRUE)
+
+  # Sort columns with original order
+  nms <- unique(c(names(x), names(y)))
+  out <- out[nms]
+
+  tibble::as_tibble(out)
+}
+
+groups_join <- function(packages, db) {
+  x <- unduplicate(packages)
+  y <- db_groups(db)
+
+  empty_x <- !NROW(x)
+  empty_y <- !NROW(y)
+
+  if (empty_x && empty_y) {
+    tibble::tibble()
+  } else if (empty_x) {
+    y
+  } else if (empty_y) {
+    x
+  } else {
+    unduplicate(full_join(x, y, "package"))
+  }
+}
+
+unduplicate <- function(x, ...) {
+  empty_dims <- n_dim(x) - 1L
+  empty_args <- rep_len(list(expr()), empty_dims)
+
+  subset <- x[...]
+  dups <- duplicated(subset)
+
+  bang(x[!dups, !!!empty_args])
+}
+n_dim <- function(x) {
+  dim <- dim(x) %|0|% 1L
+  length(dim)
+}

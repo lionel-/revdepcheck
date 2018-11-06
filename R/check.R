@@ -150,7 +150,6 @@ check_done <- function(state, worker) {
   maintainer <- description$get_maintainer()
 
   db_insert(state$options$pkgdir, worker$package,
-    group = state$group,
     version = chkres$version,
     maintainer = maintainer,
     status = status,

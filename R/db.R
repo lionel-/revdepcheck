@@ -6,7 +6,9 @@ db_version <- "2.0.0"
 #' @importFrom RSQLite dbIsValid dbConnect SQLite
 
 db <- function(package) {
-  if (exists(package, envir = dbenv) &&
+  if (is(package, "SQLiteConnection")) {
+    package
+  } else if (exists(package, envir = dbenv) &&
       dbIsValid(con <- dbenv[[package]])) {
     con
   } else if (package == ":memory:") {
@@ -37,6 +39,7 @@ db_setup <- function(package) {
   dbExecute(db, "DROP TABLE IF EXISTS revdeps")
   dbExecute(db, "DROP TABLE IF EXISTS metadata")
   dbExecute(db, "DROP TABLE IF EXISTS todo")
+  dbExecute(db, "DROP TABLE IF EXISTS groups")
 
   dbExecute(db, "CREATE TABLE metadata (name TEXT, value TEXT)")
 
@@ -50,7 +53,6 @@ db_setup <- function(package) {
   dbExecute(db,
     "CREATE TABLE revdeps (
       package TEXT,
-      grp TEXT,
       version TEXT,
       maintainer TEXT,
       status TEXT,         -- PREPERROR, INSTALLERROR, ERROR, WARNING, OK
@@ -63,7 +65,8 @@ db_setup <- function(package) {
   )
   dbExecute(db, "CREATE INDEX idx_revdeps_package ON revdeps(package)")
 
-  dbExecute(db, "CREATE TABLE todo (package TEXT, grp TEXT)")
+  dbExecute(db, "CREATE TABLE todo (package TEXT)")
+  dbExecute(db, "CREATE TABLE groups (package TEXT)")
 
   invisible(db)
 }
@@ -151,62 +154,44 @@ db_list <- function(package) {
 
 #' @importFrom DBI dbGetQuery
 
-db_todo <- function(pkgdir, group = NULL) {
-  db <- db(pkgdir)
-
-  if (is_null(group)) {
-    query <- "SELECT DISTINCT package FROM todo"
-  } else {
-    query <- sqlInterpolate(db,
-      "SELECT DISTINCT package FROM todo WHERE grp = ?group",
-      group = group
-    )
-  }
-
-  dbGetQuery(db, query)[[1]]
+db_todo <- function(pkgdir) {
+  dbGetQuery(db(pkgdir), "SELECT DISTINCT package FROM todo")[[1]]
 }
 
 #' @importFrom DBI dbWriteTable
 
 db_todo_add <- function(pkgdir, packages) {
   db <- db(pkgdir)
+  data <- pkgs_validate(packages)
 
-# If ungrouped, check prior results for known groups
-  groups <- names(packages) %||% known_groups(db, packages)
+  todo <- data[".package"]
+  dbWriteTable(db, "todo", prepare_write(todo), append = TRUE)
 
-  df <- data.frame(stringsAsFactors = FALSE,
-    package = packages,
-    grp = groups
-  )
-  row.names(df) <- NULL
-  dbWriteTable(db, "todo", df, append = TRUE)
+  # Merge new groups (if any) and known groups
+  groups <- groups_join(data, db)
+  dbWriteTable(db, "groups", prepare_write(groups), overwrite = TRUE)
 
   invisible(pkgdir)
 }
 
-known_groups <- function(db, packages) {
-  pkgs_quoted <- paste(DBI::dbQuoteString(db, packages), collapse = ", ")
-  pkgs_quoted <- paste0("(", pkgs_quoted, ")")
-
-  db_groups <- dbGetQuery(db, paste(
-    "SELECT DISTINCT package, grp",
-    "FROM revdeps",
-    "WHERE package IN", pkgs_quoted
-  ))
-  known <- packages %in% db_groups$package
-
-  groups <- names2(packages)
-  groups[known] <- db_groups$grp[known]
-  groups
-}
-
 db_groups <- function(pkgdir) {
-  dbGetQuery(db(pkgdir), "SELECT DISTINCT grp FROM todo")[[1]]
+  groups <- dbGetQuery(db(pkgdir), "SELECT DISTINCT * FROM groups")
+  tibble::as_tibble(prepare_read(groups))
+}
+prepare_read <- function(data) {
+  to_flip <- names(data) == "package"
+  names(data)[to_flip] <- ".package"
+  data
+}
+prepare_write <- function(data) {
+  to_flip <- names(data) == ".package"
+  names(data)[to_flip] <- "package"
+  data
 }
 
 #' @importFrom DBI dbExecute sqlInterpolate
 
-db_insert <- function(pkgdir, package, group, version = NULL,
+db_insert <- function(pkgdir, package, version = NULL,
                       maintainer = NULL, status,
                       which = c("old", "new"), duration, starttime,
                       result, summary) {
@@ -231,9 +216,9 @@ db_insert <- function(pkgdir, package, group, version = NULL,
   )
 
   q <- "INSERT INTO revdeps
-         (package, grp, version, maintainer, status, which,
+         (package, version, maintainer, status, which,
           duration, starttime, result, summary) VALUES
-         (?package, ?group, ?version, ?maintainer, ?status, ?which,
+         (?package, ?version, ?maintainer, ?status, ?which,
           ?duration, ?starttime, ?result, ?summary)"
 
 
@@ -241,7 +226,6 @@ db_insert <- function(pkgdir, package, group, version = NULL,
   dbExecute(db,
     sqlInterpolate(db, q,
       package = package,
-      group = group,
       version = version %|0|% "",
       maintainer = maintainer %|0|% "",
       status = status,

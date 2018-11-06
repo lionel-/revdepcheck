@@ -125,7 +125,6 @@ deps_install_done <- function(state, worker) {
 
     for (which in c("old", "new")) {
       db_insert(state$options$pkgdir, worker$package,
-        group = state$group,
         version = NULL,
         status = status,
         which = which,
