@@ -171,24 +171,8 @@ db_todo <- function(pkgdir, group = NULL) {
 db_todo_add <- function(pkgdir, packages) {
   db <- db(pkgdir)
 
-  groups <- names(packages)
-
-  # Find groups if they exist
-  if (is.null(groups)) {
-    pkgs_quoted <- paste(DBI::dbQuoteString(db, packages), collapse = ", ")
-    pkgs_quoted <- paste0("(", pkgs_quoted, ")")
-
-    db_groups <- dbGetQuery(db, paste(
-      "SELECT DISTINCT package, grp",
-      "FROM revdeps",
-      "WHERE package IN", pkgs_quoted
-    ))
-    group_exists <- packages %in% db_groups$package
-
-    # FIXME: Should default groups be "" instead of package name?
-    groups <- names2(packages)
-    groups[group_exists] <- db_groups$groups[group_exists]
-  }
+# If ungrouped, check prior results for known groups
+  groups <- names(packages) %||% known_groups(db, packages)
 
   df <- data.frame(stringsAsFactors = FALSE,
     package = packages,
@@ -198,6 +182,22 @@ db_todo_add <- function(pkgdir, packages) {
   dbWriteTable(db, "todo", df, append = TRUE)
 
   invisible(pkgdir)
+}
+
+known_groups <- function(db, packages) {
+  pkgs_quoted <- paste(DBI::dbQuoteString(db, packages), collapse = ", ")
+  pkgs_quoted <- paste0("(", pkgs_quoted, ")")
+
+  db_groups <- dbGetQuery(db, paste(
+    "SELECT DISTINCT package, grp",
+    "FROM revdeps",
+    "WHERE package IN", pkgs_quoted
+  ))
+  known <- packages %in% db_groups$package
+
+  groups <- names2(packages)
+  groups[known] <- db_groups$grp[known]
+  groups
 }
 
 db_groups <- function(pkgdir) {
