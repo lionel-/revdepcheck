@@ -40,3 +40,39 @@ test_that("db_insert() removes package from `todo`", {
 
   expect_identical(db_todo(":memory:"), "a")
 })
+
+test_that("the default group is the empty string", {
+  db_setup(":memory:")
+  db_todo_add(":memory:", c("a", "b"))
+
+  expect_identical(sort(db_todo(":memory:")), c("a", "b"))
+  expect_identical(db_groups(":memory:"), "")
+})
+
+test_that("group metadata is set", {
+  db_setup(":memory:")
+  db_todo_add(":memory:", c(group1 = "a", group2 = "b", group1 = "c"))
+
+  expect_identical(sort(db_todo(":memory:")), c("a", "b", "c"))
+  expect_identical(sort(db_groups(":memory:")), c("group1", "group2"))
+  expect_identical(sort(db_todo(":memory:", "group1")), c("a", "c"))
+  expect_identical(sort(db_todo(":memory:", "group2")), "b")
+})
+
+test_that("existing groups are checked when adding ungrouped packages", {
+  db <- db_setup(":memory:")
+  db_todo_add(":memory:", c(group1 = "a", group2 = "b", group1 = "c"))
+
+  db_insert(":memory:", "b", "group2",
+    status = "OK",
+    duration = 0,
+    starttime = 0,
+    result = "",
+    summary = ""
+  )
+  expect_identical(sort(db_todo(":memory:")), c("a", "c"))
+
+  db_todo_add(":memory:", "b")
+  expect_identical(sort(db_todo(":memory:")), c("a", "b", "c"))
+  expect_identical(sort(db_todo(":memory:", "group2")), "b")
+})
