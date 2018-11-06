@@ -276,17 +276,17 @@ report_revdeps <- function(pkg = ".") {
     paste0("[", pkg, "](problems.md#", slug, ")")
   }
 
-  results <- db_results_by_parent(pkg, NULL)
-  parents <- names(results)
+  results <- db_results_by_group(pkg, NULL)
+  groups <- names(results)
 
-  out <- map2(names(results), results, function(parent, comparisons) {
+  out <- map2(names(results), results, function(group, comparisons) {
     n_issues <- map_int(comparisons, function(x) sum(x$cmp$change %in% c(0, 1)))
 
     status <-  map_chr(comparisons, rcmdcheck_status)
     pkgname <- map_chr(comparisons, "[[", "package")
 
     data.frame(
-      parent = parent,
+      group = group,
       status = status,
       package = ifelse(n_issues > 0, problem_link(pkgname), pkgname),
       version = map_chr(comparisons, rcmdcheck_version),
@@ -297,7 +297,7 @@ report_revdeps <- function(pkg = ".") {
       check.names = FALSE
     )
   })
-  set_names(out, parents)
+  set_names(out, groups)
 }
 
 # Styling -----------------------------------------------------------------

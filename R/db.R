@@ -50,7 +50,7 @@ db_setup <- function(package) {
   dbExecute(db,
     "CREATE TABLE revdeps (
       package TEXT,
-      parent TEXT,
+      grp TEXT,
       version TEXT,
       maintainer TEXT,
       status TEXT,         -- PREPERROR, INSTALLERROR, ERROR, WARNING, OK
@@ -63,7 +63,7 @@ db_setup <- function(package) {
   )
   dbExecute(db, "CREATE INDEX idx_revdeps_package ON revdeps(package)")
 
-  dbExecute(db, "CREATE TABLE todo (package TEXT, parent TEXT)")
+  dbExecute(db, "CREATE TABLE todo (package TEXT, grp TEXT)")
 
   invisible(db)
 }
@@ -147,15 +147,15 @@ db_list <- function(package) {
 
 #' @importFrom DBI dbGetQuery
 
-db_todo <- function(pkgdir, parent = NULL) {
+db_todo <- function(pkgdir, group = NULL) {
   db <- db(pkgdir)
 
-  if (is_null(parent)) {
+  if (is_null(group)) {
     query <- "SELECT DISTINCT package FROM todo"
   } else {
     query <- sqlInterpolate(db,
-      "SELECT DISTINCT package FROM todo WHERE parent = ?parent",
-      parent = parent
+      "SELECT DISTINCT package FROM todo WHERE grp = ?group",
+      group = group
     )
   }
 
@@ -167,28 +167,28 @@ db_todo <- function(pkgdir, parent = NULL) {
 db_todo_add <- function(pkgdir, packages) {
   db <- db(pkgdir)
 
-  parent <- names(packages)
+  groups <- names(packages)
 
-  # Find parent if it exists
-  if (is.null(parent)) {
+  # Find groups if they exist
+  if (is.null(groups)) {
     pkgs_quoted <- paste(DBI::dbQuoteString(db, packages), collapse = ", ")
     pkgs_quoted <- paste0("(", pkgs_quoted, ")")
 
-    db_parents <- dbGetQuery(db, paste(
-      "SELECT DISTINCT package, parent",
+    db_groups <- dbGetQuery(db, paste(
+      "SELECT DISTINCT package, grp",
       "FROM revdeps",
       "WHERE package IN", pkgs_quoted
     ))
-    parent_exists <- packages %in% db_parents$package
+    group_exists <- packages %in% db_groups$package
 
-    # FIXME: Should default parent be "" instead of package name?
-    parent <- names2(packages)
-    parent[parent_exists] <- db_parents$parent[parent_exists]
+    # FIXME: Should default groups be "" instead of package name?
+    groups <- names2(packages)
+    groups[group_exists] <- db_groups$groups[group_exists]
   }
 
   df <- data.frame(stringsAsFactors = FALSE,
     package = packages,
-    parent = parent
+    grp = groups
   )
   row.names(df) <- NULL
   dbWriteTable(db, "todo", df, append = TRUE)
@@ -196,13 +196,13 @@ db_todo_add <- function(pkgdir, packages) {
   invisible(pkgdir)
 }
 
-db_parents <- function(pkgdir) {
-  dbGetQuery(db(pkgdir), "SELECT DISTINCT parent FROM todo")[[1]]
+db_groups <- function(pkgdir) {
+  dbGetQuery(db(pkgdir), "SELECT DISTINCT grp FROM todo")[[1]]
 }
 
 #' @importFrom DBI dbExecute sqlInterpolate
 
-db_insert <- function(pkgdir, package, parent, version = NULL,
+db_insert <- function(pkgdir, package, group, version = NULL,
                       maintainer = NULL, status,
                       which = c("old", "new"), duration, starttime,
                       result, summary) {
@@ -227,9 +227,9 @@ db_insert <- function(pkgdir, package, parent, version = NULL,
   )
 
   q <- "INSERT INTO revdeps
-         (package, parent, version, maintainer, status, which,
+         (package, grp, version, maintainer, status, which,
           duration, starttime, result, summary) VALUES
-         (?package, ?parent, ?version, ?maintainer, ?status, ?which,
+         (?package, ?group, ?version, ?maintainer, ?status, ?which,
           ?duration, ?starttime, ?result, ?summary)"
 
 
@@ -237,7 +237,7 @@ db_insert <- function(pkgdir, package, parent, version = NULL,
   dbExecute(db,
     sqlInterpolate(db, q,
       package = package,
-      parent = parent,
+      group = group,
       version = version %|0|% "",
       maintainer = maintainer %|0|% "",
       status = status,
@@ -304,10 +304,10 @@ db_results_compare <- function(res) {
   })
 }
 
-db_results_by_parent <- function(pkg, revdeps) {
+db_results_by_group <- function(pkg, revdeps) {
   res <- db_get_results(pkg, revdeps)
 
-  res_list <- map(res, unnest_col, "parent")
+  res_list <- map(res, unnest_col, "grp")
   res_list <- transpose(res_list)
 
   map(res_list, db_results_compare)
