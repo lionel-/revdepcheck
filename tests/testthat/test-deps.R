@@ -55,3 +55,13 @@ test_that("pkgs_groups() returns groups", {
   data <- data.frame(repo = c("CRAN", "bioc"), .package = c("foo", "bar"))
   expect_identical(pkgs_groups(data), data.frame(repo = c("CRAN", "bioc")))
 })
+
+test_that("pkgs_revdeps() returns tibble", {
+  skip_if_offline()
+  scoped_options(revdepcheck__limit_revdeps = TRUE)
+
+  pkgs <- pkgs_revdeps("tidyverse")
+  expect_identical(dim(pkgs), c(2L, 2L))
+  expect_named(pkgs, c("repo", ".package"))
+})
+

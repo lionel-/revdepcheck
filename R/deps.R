@@ -31,7 +31,14 @@ pkgs_revdeps <- function(package,
 pkgs_revdeps_data <- function(repos, package, dependencies) {
   pkgs <- flatten_names(map(repos, get_packages, package, dependencies))
   pkgs <- map(pkgs, tibble::enframe, name = "repo", value = ".package")
-  bang(rbind(!!!pkgs))
+  pkgs <- bang(rbind(!!!pkgs))
+
+  if (is_true(peek_option("revdepcheck__limit_revdeps"))) {
+    n <- min(2, nrow(pkgs))
+    pkgs <- pkgs[seq_len(n), ]
+  }
+
+  pkgs
 }
 
 get_repos <- function(bioc) {
