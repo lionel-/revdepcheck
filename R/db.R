@@ -71,8 +71,12 @@ db_setup <- function(package) {
 db_metadata_init <- function(package) {
   db_metadata_set(package, "dbversion", db_version)
 
-  if (package != ":memory:")
-    db_metadata_set(package, "package", pkg_name(package))
+  if (package == ":memory:") {
+    name <- package
+  } else {
+    name <- pkg_name(package)
+  }
+  db_metadata_set(package, "package", name)
 }
 
 #' @importFrom DBI dbExecute sqlInterpolate
