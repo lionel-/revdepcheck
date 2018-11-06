@@ -145,7 +145,7 @@ unduplicate <- function(x, ...) {
   subset <- x[...]
   dups <- duplicated(subset)
 
-  bang(x[!dups, !!!empty_args])
+  bang(x[which(!dups), !!!empty_args])
 }
 n_dim <- function(x) {
   dim <- dim(x) %|0|% 1L
