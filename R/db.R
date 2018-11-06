@@ -251,7 +251,7 @@ filter_result_pkgs <- function(res, revdeps) {
   res
 }
 
-db_get_results <- function(pkg, revdeps) {
+db_raw_results <- function(pkg, revdeps) {
   db <- db(pkg)
 
   if (is.null(revdeps)) {
@@ -278,7 +278,7 @@ db_get_results <- function(pkg, revdeps) {
 }
 
 db_results <- function(pkg, revdeps) {
-  res <- db_get_results(pkg, revdeps)
+  res <- db_raw_results(pkg, revdeps)
   db_results_compare(res)
 }
 db_results_compare <- function(res) {
@@ -292,13 +292,20 @@ db_results_compare <- function(res) {
   })
 }
 
-db_results_by_group <- function(pkg, revdeps) {
-  res <- db_get_results(pkg, revdeps)
+db_results_by_group <- function(pkg, revdeps = NULL) {
+  res <- db_raw_results_by_group(pkg, revdeps)
+  map(res, db_results_compare)
+}
+db_raw_results_by_group <- function(pkg, revdeps = NULL) {
+  res <- db_raw_results(pkg, revdeps)
+  groups <- prepare_write(db_groups(pkg))
 
-  res_list <- map(res, unnest_col, "grp")
-  res_list <- transpose(res_list)
+  # Join results to group data and transform the results to a list
+  # indexed by groups of results indexed by old/new
+  res <- map(res, left_join, groups, by = "package")
+  res <- transpose(map(res, unnest_col, "group"))
 
-  map(res_list, db_results_compare)
+  res
 }
 unnest_col <- function(df, col) {
   ids <- unique(df[[col]])

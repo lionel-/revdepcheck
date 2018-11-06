@@ -276,7 +276,7 @@ report_revdeps <- function(pkg = ".") {
     paste0("[", pkg, "](problems.md#", slug, ")")
   }
 
-  results <- db_results_by_group(pkg, NULL)
+  results <- db_results_by_group(pkg)
   groups <- names(results)
 
   out <- map2(names(results), results, function(group, comparisons) {

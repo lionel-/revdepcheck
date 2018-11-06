@@ -77,4 +77,7 @@ test_that("existing groups are checked when adding ungrouped packages", {
 
   db_todo_add(":memory:", "b")
   expect_identical(sort(db_todo(":memory:")), c("a", "b", "c"))
+
+  out <- db_raw_results_by_group(":memory:")
+  expect_named(out, "g2")
 })

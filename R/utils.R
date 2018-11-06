@@ -105,7 +105,13 @@ bang <- function(expr) {
 }
 
 full_join <- function(x, y, by) {
-  out <- merge(x, y, by, all.x = TRUE, all.y = TRUE)
+  merge_(x, y, by, all.x = TRUE, all.y = TRUE)
+}
+left_join <- function(x, y, by) {
+  merge_(x, y, by, all.x = TRUE, all.y = FALSE)
+}
+merge_ <- function(x, y, by, ...) {
+  out <- merge(x, y, by, ...)
 
   # Sort columns with original order
   nms <- unique(c(names(x), names(y)))
