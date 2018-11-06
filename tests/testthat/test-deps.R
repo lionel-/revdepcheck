@@ -37,6 +37,18 @@ test_that("pkgs_validate() coerces to tibble", {
   expect_is(pkgs_validate(data.frame(.package = "foo")), "tbl_df")
 })
 
+test_that("pkgs_validate() removes duplicated rows", {
+  df <- data.frame(
+    repo = c("a", "b", "b"),
+    .package = c("foo", "bar", "foo"),
+    stringsAsFactors = FALSE
+  )
+
+  out <- pkgs_validate(df)
+  exp <- tibble::tibble(repo = c("a", "b"), .package = c("foo", "bar"))
+  expect_identical(out, exp)
+})
+
 test_that("pkgs_groups() returns groups", {
   expect_length(pkgs_groups(data.frame(.package = "foo")), 0)
 

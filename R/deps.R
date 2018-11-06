@@ -110,7 +110,10 @@ pkgs_validate <- function(packages) {
     abort("`packages` must contain a `.package` column")
   }
 
-  tibble::as_tibble(packages)
+  packages <- tibble::as_tibble(packages)
+
+  dups <- duplicated(packages$.package)
+  packages[!dups, ]
 }
 
 pkgs_groups <- function(packages) {
