@@ -96,3 +96,19 @@ parse_deps <- function(deps) {
   res[notempty] <- deps
   res
 }
+
+pkgs_validate <- function(packages) {
+  if (is_character(packages)) {
+    data <- tibble::tibble(.package = packages)
+    return(data)
+  }
+
+  if (!is.data.frame(packages)) {
+    abort("`packages` must be a character vector or a data frame")
+  }
+  if (!has_name(packages, ".package")) {
+    abort("`packages` must contain a `.package` column")
+  }
+
+  tibble::as_tibble(packages)
+}
