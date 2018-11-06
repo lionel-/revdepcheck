@@ -36,3 +36,10 @@ test_that("pkgs_validate() accepts character vectors", {
 test_that("pkgs_validate() coerces to tibble", {
   expect_is(pkgs_validate(data.frame(.package = "foo")), "tbl_df")
 })
+
+test_that("pkgs_groups() returns groups", {
+  expect_length(pkgs_groups(data.frame(.package = "foo")), 0)
+
+  data <- data.frame(repo = c("CRAN", "bioc"), .package = c("foo", "bar"))
+  expect_identical(pkgs_groups(data), data.frame(repo = c("CRAN", "bioc")))
+})

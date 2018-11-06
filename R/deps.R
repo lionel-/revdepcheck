@@ -112,3 +112,8 @@ pkgs_validate <- function(packages) {
 
   tibble::as_tibble(packages)
 }
+
+pkgs_groups <- function(packages) {
+  stopifnot(is.data.frame(packages))
+  packages[names(packages) != ".package"]
+}
