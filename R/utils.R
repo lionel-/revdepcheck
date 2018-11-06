@@ -92,3 +92,10 @@ cut_into_lines <- function(x) {
   x <- strsplit(x, "\n", fixed = TRUE)[[1]]
   if (length(x)) x else ""
 }
+
+flatten_names <- function(x) {
+  x <- map2(x, names(x), function(v, n) {
+    set_names(v, rep_along(v, n))
+  })
+  unname(x)
+}

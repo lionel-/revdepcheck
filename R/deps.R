@@ -2,41 +2,17 @@
 #' @importFrom remotes bioc_install_repos
 #' @importFrom crancache available_packages
 
-cran_revdeps_one <- function(package, dependencies = TRUE, bioc = FALSE) {
-  stopifnot(is_string(package))
-  repos <- get_repos(bioc)
-
-  allpkgs <- available_packages(repos = repos)
-  alldeps <- allpkgs[, dependencies, drop = FALSE]
-  alldeps[is.na(alldeps)] <- ""
-  deps <- apply(alldeps, 1, paste, collapse = ",")
-  rd <- grepl(paste0("\\b", package, "\\b"), deps)
-
-  pkgs <- unname(allpkgs[rd, "Package"])
-  pkgs[order(tolower(pkgs))]
-}
-
-cran_revdeps <- function(packages,
-                         omit = NULL,
+pkgs_revdeps <- function(package,
                          dependencies = c("Depends", "Imports",
                                           "Suggests", "LinkingTo"),
                          bioc = TRUE) {
-  revdeps <- rep_named(names(packages), list(NULL))
+  stopifnot(is_string(package))
+  repos <- get_repos(bioc = bioc)
 
-  for (i in seq_along(packages)) {
-    pkg <- packages[[i]]
-    full_revdeps <- cran_revdeps_one(pkg, dependencies, bioc = bioc)
-    new_revdeps <- setdiff(full_revdeps, omit)
-    omit <- c(omit, new_revdeps)
-    revdeps[[i]] <- set_names(new_revdeps, rep(pkg, length(new_revdeps)))
+  pkgs <- flatten_names(map(repos, get_packages, package, dependencies))
+  pkgs <- map(pkgs, tibble::enframe, name = "repo", value = ".package")
 
-    # Add max 2 revdeps per package when debugging
-    if (exists("__REVDEPCHECK_DEBUG")) {
-      revdeps[[i]] <- revdeps[[i]][seq2(1L, min(2L, length(new_revdeps)))]
-    }
-  }
-
-  do.call(base::c, revdeps)
+  exec("rbind", !!!pkgs)
 }
 
 get_repos <- function(bioc) {
@@ -53,6 +29,21 @@ get_repos <- function(bioc) {
   repos <- repos[!(nzchar(names) & duplicated(names))]
 
   repos
+}
+
+get_packages <- function(repos, package, dependencies) {
+  if (!length(repos)) {
+    return(chr())
+  }
+
+  allpkgs <- available_packages(repos = repos)
+  alldeps <- allpkgs[, dependencies, drop = FALSE]
+  alldeps[is.na(alldeps)] <- ""
+  deps <- apply(alldeps, 1, paste, collapse = ",")
+  rd <- grepl(paste0("\\b", package, "\\b"), deps)
+
+  pkgs <- unname(allpkgs[rd, "Package"])
+  pkgs[order(tolower(pkgs))]
 }
 
 cran_deps <- function(package, repos) {

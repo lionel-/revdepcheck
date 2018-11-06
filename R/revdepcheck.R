@@ -109,7 +109,7 @@ revdep_init <- function(pkg = ".",
   status("INIT", "Computing revdeps")
 
   pkgname <- pkg_name(pkg)
-  revdeps <- cran_revdeps(c(pkgname, extra), dependencies, bioc = bioc)
+  revdeps <- pkgs_revdeps(c(pkgname, extra), dependencies, bioc = bioc)
   db_todo_add(pkg, revdeps)
 
   db_metadata_set(pkg, "todo", "install")
