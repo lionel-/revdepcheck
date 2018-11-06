@@ -25,3 +25,18 @@ test_that("package name is set", {
   db_setup(":memory:")
   expect_identical(db_metadata_get(":memory:", "package"), ":memory:")
 })
+
+test_that("db_insert() removes package from `todo`", {
+  db_setup(":memory:")
+  db_todo_add(":memory:", c("a", "b"))
+
+  db_insert(":memory:", "b", "",
+    status = "OK",
+    duration = 0,
+    starttime = 0,
+    result = "",
+    summary = ""
+  )
+
+  expect_identical(db_todo(":memory:"), "a")
+})
