@@ -120,14 +120,11 @@ merge_ <- function(x, y, by, ...) {
   tibble::as_tibble(out)
 }
 
-# Only supports `by` of length 1
+# The following join functions only support `by` of length 1, and 2
+# data frames
 nest_join <- function(x, y, by, name = "y") {
-  stopifnot(
-    is_character(by),
-    length(by) == 1L,
-    all(by %in% names(x)),
-    all(by %in% names(y))
-  )
+  check_join_inputs(by, list(x = x, y = y))
+
   x <- tibble::as_tibble(x)
   y <- tibble::as_tibble(y)
 
@@ -144,6 +141,18 @@ nest_join <- function(x, y, by, name = "y") {
 
   out <- cbind(x, tibble::tibble(!!name := out))
   tibble::as_tibble(out)
+}
+
+check_join_inputs <- function(by, dfs) {
+  stopifnot(
+    # These length constraints should ideally be lifted:
+    is_character(by, n = 1L),
+    is_list(dfs, n = 2L),
+    is_named(dfs),
+
+    every(dfs, is.data.frame),
+    every(dfs, function(df) all(by %in% names(df)))
+  )
 }
 
 groups_join <- function(packages, db) {
