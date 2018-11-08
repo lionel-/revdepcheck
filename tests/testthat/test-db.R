@@ -39,7 +39,7 @@ test_that("db_insert() removes package from `todo`", {
     summary = ""
   )
 
-  expect_identical(db_todo(":memory:"), "a")
+  expect_identical(db_todo(":memory:")$package, "a")
 })
 
 test_that("results can be retrieved from data base at any time", {
@@ -77,7 +77,7 @@ test_that("results can be retrieved from data base at any time", {
 test_that("default group table has `package` column", {
   db_setup(":memory:")
   db_todo_add(":memory:", c("a", "b"))
-  expect_identical(sort(db_todo(":memory:")), c("a", "b"))
+  expect_identical(sort(db_todo(":memory:")$package), c("a", "b"))
   expect_identical(db_groups(":memory:"), tibble(package = c("a", "b")))
 })
 
@@ -87,7 +87,7 @@ test_that("group metadata is set", {
   groups <- tibble(group = c("g1", "g2", "g1"), package = c("a", "b", "c"))
   db_todo_add(":memory:", groups)
 
-  expect_identical(sort(db_todo(":memory:")), c("a", "b", "c"))
+  expect_identical(sort(db_todo(":memory:")$package), c("a", "b", "c"))
   expect_identical(db_groups(":memory:"), groups)
 })
 
@@ -98,10 +98,10 @@ test_that("existing groups are checked when adding ungrouped packages", {
   db_todo_add(":memory:", groups)
 
   bang(db_insert(":memory:", !!!new_pkg_list("b", "old")))
-  expect_identical(sort(db_todo(":memory:")), c("a", "c"))
+  expect_identical(sort(db_todo(":memory:")$package), c("a", "c"))
 
   db_todo_add(":memory:", "b")
-  expect_identical(sort(db_todo(":memory:")), c("a", "b", "c"))
+  expect_identical(sort(db_todo(":memory:")$package), c("a", "b", "c"))
 
   bang(db_insert(":memory:", !!!new_pkg_list("b", "new")))
   results <- db_results(":memory:")

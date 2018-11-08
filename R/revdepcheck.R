@@ -109,8 +109,12 @@ revdep_init <- function(pkg = ".",
   "!DEBUG getting reverse dependencies for `basename(pkg)`"
   status("INIT", "Computing revdeps")
 
-  pkgname <- pkg_name(pkg)
-  revdeps <- pkgs_revdeps(c(pkgname, extra), dependencies, bioc = bioc)
+  if (is_pkgs_revdeps(dependencies)) {
+    revdeps <- dependencies
+  } else {
+    pkgname <- pkg_name(pkg)
+    revdeps <- pkgs_revdeps(c(pkgname, extra), dependencies, bioc = bioc)
+  }
   db_todo_add(pkg, revdeps)
 
   db_metadata_set(pkg, "todo", "install")
@@ -181,33 +185,36 @@ revdep_run <- function(pkg = ".", quiet = TRUE,
 
   start <- Sys.time()
 
-  flat_todo <- db_todo(pkg)
-  total <- length(flat_todo)
+  todo <- db_todo(pkg)
+  total <- nrow(todo)
   count <- c(0L, total)
 
-  groups_data <- db_groups(pkg)
-  groups <- pkgs_groups(groups_data)
+  groups <- unduplicate(todo$groups)
   n_groups <- nrow(groups)
 
   if (n_groups > 1L) {
     for (i in seq_len(n_groups)) {
-      group <- groups[[i]]
-      todo <- db_todo(pkg, group = group)
+      group <- unlist(groups[i, ])
+      group_label <- paste(group, collapse = ":")
 
-      header1 <- sprintf("CHECK %s (%s/%s)", group, i, n_groups)
-      header2 <- paste0(length(todo), " packages")
+      matches <- pmap(todo$groups, function(...) identical(c(...), group))
+      idx <- which(unlist(matches))
+      group_todo <- todo[idx, ]
+
+      header1 <- sprintf("CHECK %s (%s/%s)", group_label, i, n_groups)
+      header2 <- paste0(nrow(group_todo), " packages")
       status(header1, header2)
 
-      revdep_run_one(pkg, todo, group, count, quiet, timeout, num_workers, bioc)
-      count <- c(count[[1]] + length(todo), total)
+      revdep_run_group(pkg, group_todo$package, count, quiet, timeout, num_workers, bioc)
+      count <- c(count[[1]] + nrow(group_todo), total)
 
       if (i != n_groups) {
         cat("\n")
       }
     }
   } else {
-    status("CHECK", paste0(length(flat_todo), " packages"))
-    revdep_run_one(pkg, flat_todo, groups[[1]], count, quiet, timeout, num_workers, bioc)
+    status("CHECK", paste0(nrow(todo), " packages"))
+    revdep_run_group(pkg, todo$package, count, quiet, timeout, num_workers, bioc)
   }
 
   end <- Sys.time()
@@ -220,9 +227,9 @@ revdep_run <- function(pkg = ".", quiet = TRUE,
   db_metadata_set(pkg, "todo", "report")
   invisible()
 }
-revdep_run_one <- function(pkg, todo, group, count, quiet = TRUE,
-                           timeout = as.difftime(10, units = "mins"),
-                           num_workers = 1, bioc = TRUE) {
+revdep_run_group <- function(pkg, todo, count, quiet = TRUE,
+                             timeout = as.difftime(10, units = "mins"),
+                             num_workers = 1, bioc = TRUE) {
   pkgname <- pkg_name(pkg)
 
   state <- list(
@@ -238,7 +245,6 @@ revdep_run_one <- function(pkg, todo, group, count, quiet = TRUE,
       state = if (length(todo)) "todo" else character(),
       stringsAsFactors = FALSE
     ),
-    group = group,
     count = count
   )
 

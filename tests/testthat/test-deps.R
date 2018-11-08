@@ -24,7 +24,7 @@ test_that("parse_deps extreme cases", {
 test_that("pkgs_validate() checks types", {
   expect_error(pkgs_validate(10), "must be")
   expect_error(pkgs_validate(list()), "must be")
-  expect_error(pkgs_validate(data.frame(x = "foo")), "must contain")
+  expect_error(pkgs_validate(data.frame(x = "foo")), "must be")
 })
 
 test_that("pkgs_validate() accepts character vectors", {
@@ -47,16 +47,6 @@ test_that("pkgs_validate() removes duplicated rows", {
   out <- pkgs_validate(df)
   exp <- tibble(repo = c("a", "b"), package = c("foo", "bar"))
   expect_identical(out, exp)
-})
-
-test_that("pkgs_groups() returns unique groups", {
-  expect_length(pkgs_groups(data.frame(package = "foo")), 0)
-
-  data <- tibble(repo = c("CRAN", "bioc"), package = c("foo", "bar"))
-  expect_identical(pkgs_groups(data), tibble(repo = c("CRAN", "bioc")))
-
-  data <- tibble(repo = c("CRAN", "bioc", "CRAN"), package = c("foo", "bar", "baz"))
-  expect_identical(pkgs_groups(data), tibble(repo = c("CRAN", "bioc")))
 })
 
 test_that("pkgs_revdeps() returns tibble", {

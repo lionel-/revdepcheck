@@ -110,19 +110,13 @@ pkgs_validate <- function(packages) {
     return(data)
   }
 
-  if (!is.data.frame(packages)) {
-    abort("`packages` must be a character vector or a data frame")
-  }
-  if (!has_name(packages, "package")) {
-    abort("`packages` must contain a `package` column")
+  if (!is_pkgs_revdeps(packages)) {
+    abort("`packages` must be a character vector or a data frame with a `package column`")
   }
 
   packages <- as_tibble(packages)
   unduplicate(packages, "package")
 }
-
-pkgs_groups <- function(packages) {
-  packages <- tibble::as.tibble(packages)
-  packages <- packages[names(packages) != "package"]
-  unduplicate(packages)
+is_pkgs_revdeps <- function(x) {
+  is.data.frame(x) && has_name(x, "package")
 }

@@ -250,7 +250,7 @@ report_status <- function(pkg = ".") {
   broken <- map_lgl(comparisons, is_broken)
 
   list(
-    todo = length(db_todo(pkg)),
+    todo = nrow(db_todo(pkg)),
     ok = sum(!broken),
     broken = sum(broken)
   )

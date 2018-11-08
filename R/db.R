@@ -155,7 +155,15 @@ db_list <- function(package) {
 #' @importFrom DBI dbGetQuery
 
 db_todo <- function(pkgdir) {
-  dbGetQuery(db(pkgdir), "SELECT DISTINCT package FROM todo")[[1]]
+  db <- db(pkgdir)
+  package <- dbGetQuery(db, "SELECT DISTINCT package FROM todo")[[1]]
+  groups <- db_groups(db)
+
+  # Join to known groups
+  join("package", .unmatched = "drop",
+    tibble(package = package),
+    groups = groups
+  )
 }
 
 #' @importFrom DBI dbWriteTable
