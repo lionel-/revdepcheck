@@ -131,17 +131,29 @@ join <- function(.by,
   dfs[to_nest] <- map(dfs[to_nest], unbox)
 
   dfs <- map(dfs, as_tibble)
+  to_splice <- names(dfs) == ""
 
   strict <- match.arg(.unmatched) == "error"
   inds <- join_indices(.by, dfs, strict)
 
   by_col <- dfs[[1]][[.by]][inds[[1]]] %||% .by[int()]
+  dfs <- map2(dfs, to_splice, unselect_by, .by, .keep)
 
-  dfs[to_nest] <- map2(dfs[to_nest], inds[to_nest], subset_nested_df_col, keep = .keep, by = .by)
-  dfs[!to_nest] <- map2(dfs[!to_nest], inds[!to_nest], subset_df_col, keep = .keep, by = .by)
+  dfs[to_nest] <- pmap(
+    list(dfs[to_nest], inds[to_nest], to_splice[to_nest]),
+    subset_nested,
+    keep = .keep,
+    by = .by
+  )
 
-  dfs <- dfs_splice(dfs, .by)
+  dfs[!to_nest] <- pmap(
+    list(dfs[!to_nest], inds[!to_nest], to_splice[!to_nest]),
+    subset_unnested,
+    keep = .keep,
+    by = .by
+  )
 
+  dfs <- flatten_if(dfs, is_spliced)
   tibble(!!.by := by_col, !!!dfs)
 }
 
@@ -191,11 +203,14 @@ matched_keys <- function(keys, strict) {
   matched
 }
 
-subset_nested_df_col <- function(df, idx, keep, by) {
-  if (!keep) {
+unselect_by <- function(df, splice, by, keep) {
+  if (!keep || splice) {
     df <- df[-match(by, names(df))]
   }
+  df
+}
 
+subset_nested <- function(df, idx, splice, keep, by) {
   n <- length(idx)
   ptype <- df[int(), ]
 
@@ -204,26 +219,20 @@ subset_nested_df_col <- function(df, idx, keep, by) {
     list_col[[i]] <- df[idx[[i]], ]
   }
 
-  list_col
-}
-subset_df_col <- function(df, idx, keep, by) {
-  df_col <- df[idx, ]
-
-  if (!keep) {
-      df_col <- df_col[-match(by, names(df))]
+  if (splice) {
+    splice(transpose(list_col))
+  } else {
+    list_col
   }
-
-  df_col
 }
+subset_unnested <- function(df, idx, splice, keep, by) {
+  df <- df[idx, ]
 
-dfs_splice <- function(dfs, by) {
-  to_splice <- names(dfs) == ""
-  if (!any(to_splice)) {
-    return(dfs)
+  if (splice) {
+    splice(df)
+  } else {
+    df
   }
-
-  dfs <- map_if(dfs, to_splice, splice)
-  flatten_if(dfs, is_spliced)
 }
 
 check_join_inputs <- function(by, dfs) {
@@ -237,10 +246,7 @@ check_join_inputs <- function(by, dfs) {
   )
 
   spliced <- dfs[names(dfs) == ""]
-
-  if (some(spliced, is_nesting_box)) {
-    abort("Can't splice nesting tibbles (currently)")
-  }
+  spliced <- map_if(spliced, is_nesting_box, unbox)
 
   spliced <- map(spliced, function(df) df[-match(by, names(df))])
   all_nms <- unlist(map(spliced, names))

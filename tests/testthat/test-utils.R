@@ -200,4 +200,24 @@ test_that("can join-splice with unnamed arguments to join()", {
     bar = tibble(y = c(4L, 5L))
   )
   expect_identical(join("key", foo, bar = bar), exp)
+
+  exp <- tibble(
+    key = c("a", "c"),
+    x = c(1L, 3L),
+    bar = tibble(y = c(4L, 5L), key = c("a", "c"))
+  )
+  expect_identical(join("key", foo, bar = bar, .keep = TRUE), exp)
+})
+
+test_that("can join-splice with nesting unnamed arguments to join()", {
+  foo <- tibble(x = 1:3, y = 4:6, key = c("a", "b", "c"))
+  bar <- tibble(z = 4:6, key = c("a", "c", "d"))
+
+  exp <- tibble(
+    key = c("a", "c"),
+    x = list(1L, 3L),
+    y = list(4L, 6L),
+    bar = tibble(z = 4:5)
+  )
+  expect_identical(join("key", nesting(foo), bar = bar), exp)
 })
