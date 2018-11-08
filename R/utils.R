@@ -120,27 +120,37 @@ merge_ <- function(x, y, by, ...) {
   as_tibble(out)
 }
 
-# The following join functions only support `by` of length 1, and 2
-# data frames
-nest_join <- function(x, y, by, name = "y") {
-  check_join_inputs(by, list(x = x, y = y))
+nest_join <- function(.by,
+                      ...,
+                      .keep = FALSE,
+                      .unmatched = c("drop", "error")) {
+  dfs <- list2(...)
+  check_join_inputs(.by, dfs)
 
-  x <- tibble::as_tibble(x)
-  y <- tibble::as_tibble(y)
+  dfs <- map(dfs, as_tibble)
 
-  inds <- map(y[[by]], function(i) which(x[[by]] == i))
-  n <- length(inds)
+  strict <- match.arg(.unmatched) == "error"
+  inds <- join_indices(.by, dfs, strict)
 
-  y_nested <- y[-match(by, names(y))]
-  ptype <- y_nested[int(), ]
+  by_col <- dfs[[1]][[.by]][inds[[1]]] %||% .by[int()]
 
-  out <- rep_len(list(ptype), n)
-  for (i in seq_len(n)) {
-    out[inds[[i]]] <- list(y_nested[i, ])
-  }
+  dfs <- map2(dfs, inds, function(df, idx) {
+    if (!.keep) {
+      df <- df[-match(.by, names(df))]
+    }
 
-  out <- cbind(x, tibble(!!name := out))
-  as_tibble(out)
+    n <- length(idx)
+    ptype <- df[int(), ]
+
+    list_col <- rep_len(list(ptype), n)
+    for (i in seq_len(n)) {
+      list_col[[i]] <- df[idx[[i]], ]
+    }
+
+    list_col
+  })
+
+  tibble(!!.by := by_col, !!!dfs)
 }
 
 bare_join <- function(.by,
@@ -155,8 +165,8 @@ bare_join <- function(.by,
   strict <- match.arg(.unmatched) == "error"
   inds <- join_indices(.by, dfs, strict)
 
+  by_col <- dfs[[1]][[.by]][inds[[1]]] %||% .by[int()]
   dfs <- map2(dfs, inds, function(df, idx) df[idx, ])
-  by_col <- dfs[[1]][[.by]]
 
   if (!.keep) {
     dfs <- map(dfs, function(df) df[-match(.by, names(df))])
