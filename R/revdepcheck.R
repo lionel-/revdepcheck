@@ -185,8 +185,10 @@ revdep_run <- function(pkg = ".", quiet = TRUE,
   total <- length(flat_todo)
   count <- c(0L, total)
 
-  groups <- db_groups(pkg)
-  n_groups <- length(groups)
+  groups_data <- db_groups(pkg)
+  groups <- pkgs_groups(groups_data)
+  n_groups <- nrow(groups)
+
   if (n_groups > 1L) {
     for (i in seq_len(n_groups)) {
       group <- groups[[i]]

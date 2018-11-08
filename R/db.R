@@ -241,7 +241,7 @@ filter_result_pkgs <- function(res, revdeps) {
   res
 }
 
-db_raw_results <- function(pkg, revdeps) {
+db_raw_results <- function(pkg, revdeps = NULL) {
   db <- db(pkg)
 
   if (is.null(revdeps)) {
@@ -264,47 +264,36 @@ db_raw_results <- function(pkg, revdeps) {
       "ORDER BY package COLLATE NOCASE"))
   }
 
-  list(old = old, new = new)
+  # Match old and new on `package`, nested in list-columns
+  results <- join("package", .unmatched = "drop",
+    old = nesting(old),
+    new = nesting(new)
+  )
+
+  # Match current results to known groups
+  results <- join("package", .unmatched = "drop",
+    groups = db_groups(db),
+    results
+  )
+
+  results
 }
 
-db_results <- function(pkg, revdeps) {
+db_results <- function(pkg, revdeps = NULL) {
   res <- db_raw_results(pkg, revdeps)
   db_results_compare(res)
 }
-db_results_compare <- function(res) {
-  packages <- union(res$old$package, res$new$package)
+db_results_compare <- function(data) {
+  # In case groups is empty (e.g. in tests)
+  subset <- data[c("package", "old", "new")]
 
-  lapply_with_names(packages, function(package) {
-    oldcheck <- checkFromJSON(res$old$result[match(package, res$old$package)])
-    newcheck <- checkFromJSON(res$new$result[match(package, res$new$package)])
-
+  data$comparisons <- pmap(subset, function(package, old, new) {
+    oldcheck <- checkFromJSON(old$result)
+    newcheck <- checkFromJSON(new$result)
     try_compare_checks(package, oldcheck, newcheck)
   })
-}
 
-db_results_by_group <- function(pkg, revdeps = NULL) {
-  res <- db_raw_results_by_group(pkg, revdeps)
-  map(res, db_results_compare)
-}
-db_raw_results_by_group <- function(pkg, revdeps = NULL) {
-  res <- db_raw_results(pkg, revdeps)
-  groups <- db_groups(pkg)
-
-  # Join results to group data and transform the results to a list
-  # indexed by groups of results indexed by old/new
-  res <- map(res, left_join, groups, by = "package")
-  res <- transpose(map(res, unnest_col, "group"))
-
-  res
-}
-unnest_col <- function(df, col) {
-  ids <- unique(df[[col]])
-
-  map(set_names(ids), function(id) {
-    rows <- df[[col]] == id
-    cols <- -match(col, names(df))
-    df[rows, cols, drop = FALSE]
-  })
+  data
 }
 
 db_maintainers <- function(pkg) {

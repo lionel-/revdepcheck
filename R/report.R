@@ -31,7 +31,6 @@ revdep_report_summary <- function(pkg = ".", file = "") {
   cat_kable(report_libraries(pkg), file = file)
 
   revdeps <- report_revdeps(pkg)
-  revdeps <- do.call("rbind", revdeps)
 
   status <- revdeps$status
   revdeps$status <- NULL
@@ -68,7 +67,7 @@ revdep_report_problems <- function(pkg = ".", file = "") {
     on.exit(options(opts), add = TRUE)
   }
 
-  comparisons <- db_results(pkg, NULL)
+  comparisons <- db_results(pkg)$comparisons
   n_issues <- map_int(comparisons, function(x) sum(x$cmp$change %in% c(0, 1)))
 
   map(comparisons[n_issues > 0], failure_details, file = file)
@@ -144,10 +143,11 @@ revdep_report_cran <- function(pkg = ".") {
   opts <- options("crayon.enabled" = FALSE)
   on.exit(options(opts), add = TRUE)
 
-  comparisons <- db_results(pkg, NULL)
+  results <- db_results(pkg)
+  comparisons <- results$comparisons
+  package <- results$package
 
   status <- map_chr(comparisons, function(x) x$status %|0|% "i")
-  package <- map_chr(comparisons, "[[", "package")
   on_cran <- map_lgl(comparisons, on_cran)
 
   broke <- status == "-" & on_cran
@@ -246,8 +246,8 @@ report_libraries <- function(pkg) {
 }
 
 report_status <- function(pkg = ".") {
-  packages <- db_results(pkg, NULL)
-  broken <- map_lgl(packages, is_broken)
+  comparisons <- db_results(pkg)$comparisons
+  broken <- map_lgl(comparisons, is_broken)
 
   list(
     todo = length(db_todo(pkg)),
@@ -276,28 +276,21 @@ report_revdeps <- function(pkg = ".") {
     paste0("[", pkg, "](problems.md#", slug, ")")
   }
 
-  results <- db_results_by_group(pkg)
-  groups <- names(results)
+  results <- db_results(pkg)
+  comparisons <- results$comparisons
 
-  out <- map2(names(results), results, function(group, comparisons) {
-    n_issues <- map_int(comparisons, function(x) sum(x$cmp$change %in% c(0, 1)))
+  n_issues <- map_int(comparisons, function(x) sum(x$cmp$change %in% c(0, 1)))
+  package <- results$package
 
-    status <-  map_chr(comparisons, rcmdcheck_status)
-    pkgname <- map_chr(comparisons, "[[", "package")
-
-    data.frame(
-      group = group,
-      status = status,
-      package = ifelse(n_issues > 0, problem_link(pkgname), pkgname),
-      version = map_chr(comparisons, rcmdcheck_version),
-      error = map_chr(comparisons, make_summary, "error"),
-      warning = map_chr(comparisons, make_summary, "warning"),
-      note = map_chr(comparisons, make_summary, "note"),
-      stringsAsFactors = FALSE,
-      check.names = FALSE
-    )
-  })
-  set_names(out, groups)
+  tibble(
+    !!!results$groups,
+    status = map_chr(comparisons, rcmdcheck_status),
+    package = ifelse(n_issues > 0, problem_link(package), package),
+    version = map_chr(comparisons, rcmdcheck_version),
+    error = map_chr(comparisons, make_summary, "error"),
+    warning = map_chr(comparisons, make_summary, "warning"),
+    note = map_chr(comparisons, make_summary, "note")
+  )
 }
 
 # Styling -----------------------------------------------------------------

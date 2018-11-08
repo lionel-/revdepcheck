@@ -42,6 +42,38 @@ test_that("db_insert() removes package from `todo`", {
   expect_identical(db_todo(":memory:"), "a")
 })
 
+test_that("results can be retrieved from data base at any time", {
+  empty_results <- tibble(
+    package = chr(),
+    groups = tibble(),
+    old = list(),
+    new = list(),
+    comparisons = list()
+  )
+
+  db_setup(":memory:")
+  expect_identical(db_results(":memory:"), empty_results)
+
+  db_todo_add(":memory:", tibble(package = "a"))
+  expect_identical(db_results(":memory:"), empty_results)
+
+  # Succeeds because `old` and `new` don't need to both be in the db
+  bang(db_insert(":memory:", !!!new_pkg_list("a", "old")))
+  expect_identical(db_results(":memory:"), empty_results)
+
+  res <- list(errors = chr(), warnings = chr(), notes = chr())
+  exp_result <- tibble(
+    package = "a",
+    groups = structure(tibble(), row.names = 1L),
+    old = list(tibble(!!!new_pkg_result_list("old"))),
+    new = list(tibble(!!!new_pkg_result_list("new"))),
+    comparisons = list(rcmdcheck_error("a", old = res, new = res))
+  )
+
+  bang(db_insert(":memory:", !!!new_pkg_list("a", "new")))
+  expect_identical(db_results(":memory:"), exp_result)
+})
+
 test_that("default group table has `package` column", {
   db_setup(":memory:")
   db_todo_add(":memory:", c("a", "b"))
@@ -65,19 +97,13 @@ test_that("existing groups are checked when adding ungrouped packages", {
   groups <- tibble(group = c("g1", "g2", "g1"), package = c("a", "b", "c"))
   db_todo_add(":memory:", groups)
 
-  db_insert(":memory:",
-    package = "b",
-    status = "OK",
-    duration = 0,
-    starttime = 0,
-    result = "",
-    summary = ""
-  )
+  bang(db_insert(":memory:", !!!new_pkg_list("b", "old")))
   expect_identical(sort(db_todo(":memory:")), c("a", "c"))
 
   db_todo_add(":memory:", "b")
   expect_identical(sort(db_todo(":memory:")), c("a", "b", "c"))
 
-  out <- db_raw_results_by_group(":memory:")
-  expect_named(out, "g2")
+  bang(db_insert(":memory:", !!!new_pkg_list("b", "new")))
+  results <- db_results(":memory:")
+  expect_identical(results$groups$group, "g2")
 })
