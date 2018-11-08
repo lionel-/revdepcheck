@@ -133,22 +133,7 @@ nest_join <- function(.by,
   inds <- join_indices(.by, dfs, strict)
 
   by_col <- dfs[[1]][[.by]][inds[[1]]] %||% .by[int()]
-
-  dfs <- map2(dfs, inds, function(df, idx) {
-    if (!.keep) {
-      df <- df[-match(.by, names(df))]
-    }
-
-    n <- length(idx)
-    ptype <- df[int(), ]
-
-    list_col <- rep_len(list(ptype), n)
-    for (i in seq_len(n)) {
-      list_col[[i]] <- df[idx[[i]], ]
-    }
-
-    list_col
-  })
+  dfs <- map2(dfs, inds, subset_nested_df_col, keep = .keep, by = .by)
 
   tibble(!!.by := by_col, !!!dfs)
 }
@@ -166,11 +151,7 @@ bare_join <- function(.by,
   inds <- join_indices(.by, dfs, strict)
 
   by_col <- dfs[[1]][[.by]][inds[[1]]] %||% .by[int()]
-  dfs <- map2(dfs, inds, function(df, idx) df[idx, ])
-
-  if (!.keep) {
-    dfs <- map(dfs, function(df) df[-match(.by, names(df))])
-  }
+  dfs <- map2(dfs, inds, subset_df_col, keep = .keep, by = .by)
 
   tibble(!!.by := by_col, !!!dfs)
 }
@@ -212,6 +193,31 @@ matched_keys <- function(keys, strict) {
   }
 
   matched
+}
+
+subset_nested_df_col <- function(df, idx, keep, by) {
+  if (!keep) {
+    df <- df[-match(by, names(df))]
+  }
+
+  n <- length(idx)
+  ptype <- df[int(), ]
+
+  list_col <- rep_len(list(ptype), n)
+  for (i in seq_len(n)) {
+    list_col[[i]] <- df[idx[[i]], ]
+  }
+
+  list_col
+}
+subset_df_col <- function(df, idx, keep, by) {
+  df_col <- df[idx, ]
+
+  if (!keep) {
+      df_col <- df_col[-match(by, names(df))]
+  }
+
+  df_col
 }
 
 check_join_inputs <- function(by, dfs) {
