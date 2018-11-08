@@ -143,16 +143,84 @@ nest_join <- function(x, y, by, name = "y") {
   tibble::as_tibble(out)
 }
 
+bare_join <- function(.by,
+                      ...,
+                      .keep = FALSE,
+                      .unmatched = c("drop", "error")) {
+  dfs <- list2(...)
+  check_join_inputs(.by, dfs)
+
+  dfs <- map(dfs, tibble::as_tibble)
+
+  strict <- match.arg(.unmatched) == "error"
+  inds <- join_indices(.by, dfs, strict)
+
+  dfs <- map2(dfs, inds, function(df, idx) df[idx, ])
+  by_col <- dfs[[1]][[.by]]
+
+  if (!.keep) {
+    dfs <- map(dfs, function(df) df[-match(.by, names(df))])
+  }
+
+  tibble::tibble(!!.by := by_col, !!!dfs)
+}
+
+join_indices <- function(by, dfs, strict = FALSE) {
+  keys <- map(dfs, `[[`, by)
+  matched <- matched_keys(keys, strict)
+
+  # Pair each key with a row index
+  keys <- map(keys, tibble::enframe, name = "index")
+
+  # Drop unmatched
+  keys <- map2(keys, matched, function(key, idx) key[idx, ])
+
+  # Take first key vector ordering
+  model <- keys[[1]]$value
+
+  # Match keys to model and reorder the key index
+  map(keys, function(key) {
+    key <- key[match(model, key$value), ]
+    key$index
+  })
+}
+
+matched_keys <- function(keys, strict) {
+  matched <- new_list(length(keys))
+
+  for (i in seq_along(keys)) {
+    key <- keys[[i]]
+    keep <- reduce(keys[-i], .init = TRUE, function(keep, other) {
+      keep & key %in% other
+    })
+
+    if (strict && !all(keep)) {
+      abort("Join keys can't be unmatched")
+    }
+
+    matched[[i]] <- which(keep)
+  }
+
+  matched
+}
+
 check_join_inputs <- function(by, dfs) {
   stopifnot(
-    # These length constraints should ideally be lifted:
-    is_character(by, n = 1L),
-    is_list(dfs, n = 2L),
+    # Multiple keys are unimplemented
+    is_string(by),
+
+    is_list(dfs) && length(dfs) >= 1L,
     is_named(dfs),
 
     every(dfs, is.data.frame),
-    every(dfs, function(df) all(by %in% names(df)))
+    every(dfs, has_name, by)
   )
+
+  # Product of duplicates is unimplemented
+  keys <- map(dfs, `[[`, by)
+  if (some(keys, function(x) as.logical(anyDuplicated(x)))) {
+    abort("Join keys can't be duplicated")
+  }
 }
 
 groups_join <- function(packages, db) {
