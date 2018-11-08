@@ -120,12 +120,15 @@ merge_ <- function(x, y, by, ...) {
   as_tibble(out)
 }
 
-nest_join <- function(.by,
-                      ...,
-                      .keep = FALSE,
-                      .unmatched = c("drop", "error")) {
+join <- function(.by,
+                 ...,
+                 .keep = FALSE,
+                 .unmatched = c("drop", "error")) {
   dfs <- list2(...)
   check_join_inputs(.by, dfs)
+
+  to_nest <- map_lgl(dfs, is_box, "join_nesting_box")
+  dfs[to_nest] <- map(dfs[to_nest], unbox)
 
   dfs <- map(dfs, as_tibble)
 
@@ -133,27 +136,15 @@ nest_join <- function(.by,
   inds <- join_indices(.by, dfs, strict)
 
   by_col <- dfs[[1]][[.by]][inds[[1]]] %||% .by[int()]
-  dfs <- map2(dfs, inds, subset_nested_df_col, keep = .keep, by = .by)
+
+  dfs[to_nest] <- map2(dfs[to_nest], inds[to_nest], subset_nested_df_col, keep = .keep, by = .by)
+  dfs[!to_nest] <- map2(dfs[!to_nest], inds[!to_nest], subset_df_col, keep = .keep, by = .by)
 
   tibble(!!.by := by_col, !!!dfs)
 }
 
-bare_join <- function(.by,
-                      ...,
-                      .keep = FALSE,
-                      .unmatched = c("drop", "error")) {
-  dfs <- list2(...)
-  check_join_inputs(.by, dfs)
-
-  dfs <- map(dfs, as_tibble)
-
-  strict <- match.arg(.unmatched) == "error"
-  inds <- join_indices(.by, dfs, strict)
-
-  by_col <- dfs[[1]][[.by]][inds[[1]]] %||% .by[int()]
-  dfs <- map2(dfs, inds, subset_df_col, keep = .keep, by = .by)
-
-  tibble(!!.by := by_col, !!!dfs)
+nesting <- function(x) {
+  new_box(x, "join_nesting_box")
 }
 
 join_indices <- function(by, dfs, strict = FALSE) {
@@ -228,15 +219,28 @@ check_join_inputs <- function(by, dfs) {
     is_list(dfs) && length(dfs) >= 1L,
     is_named(dfs),
 
-    every(dfs, is.data.frame),
-    every(dfs, has_name, by)
+    every(dfs, is_join_df, by = by)
   )
+}
 
-  # Product of duplicates is unimplemented
-  keys <- map(dfs, `[[`, by)
-  if (some(keys, function(x) as.logical(anyDuplicated(x)))) {
+is_join_df <- function(df, by) {
+  if (is_box(df, "join_nesting_box")) {
+    df <- unbox(df)
+  }
+
+  if (!is.data.frame(df)) {
+    abort("Can't join with objects that are not data frames")
+  }
+
+  if (!has_name(df, by)) {
+    abort("Can't join data frame that has no key column")
+  }
+
+  if (anyDuplicated(df[[by]])) {
     abort("Join keys can't be duplicated")
   }
+
+  TRUE
 }
 
 groups_join <- function(packages, db) {
