@@ -6,19 +6,19 @@ test_that("unduplicate() works with empty tibbles", {
 
 test_that("nest_join() joins", {
   out <- nest_join(
-    tibble::tibble(x = 1:3, key = c("a", "a", "b")),
-    tibble::tibble(y = 3:1, key = c("a", "b", "c")),
     "key",
     name = "foo"
+    foo = tibble(x = 1:3, key = c("a", "a", "b")),
+    bar = tibble(y = 3:1, key = c("a", "b", "c"))
   )
 
-  exp <- tibble::tibble(
+  exp <- tibble(
     x = 1:3,
     key = c("a", "a", "b"),
     foo = list(
-      tibble::tibble(y = 3L),
-      tibble::tibble(y = 3L),
-      tibble::tibble(y = 2L)
+      tibble(y = 3L),
+      tibble(y = 3L),
+      tibble(y = 2L)
     )
   )
 
@@ -27,19 +27,19 @@ test_that("nest_join() joins", {
 
 test_that("nest_join() handles missing matches", {
   out <- nest_join(
-    tibble::tibble(x = 1:3, key = c("a", "a", "b")),
-    tibble::tibble(y = 3:1, key = c("a", "c", "c")),
+    tibble(x = 1:3, key = c("a", "a", "b")),
+    tibble(y = 3:1, key = c("a", "c", "c")),
     by = "key",
     name = "foo"
   )
 
-  exp <- tibble::tibble(
+  exp <- tibble(
     x = 1:3,
     key = c("a", "a", "b"),
     foo = list(
-      tibble::tibble(y = 3L),
-      tibble::tibble(y = 3L),
-      tibble::tibble(y = int())
+      tibble(y = 3L),
+      tibble(y = 3L),
+      tibble(y = int())
     )
   )
 
@@ -48,16 +48,16 @@ test_that("nest_join() handles missing matches", {
 
 test_that("bare_join() handles fully unmatched keys", {
   dfs <- list(
-    foo = tibble::tibble(x = 1:3, key = c("a", "b", "c")),
-    bar = tibble::tibble(y = 4:6, key = c("a", "c", "d")),
-    baz = tibble::tibble(z = 7L, key = "d")
+    foo = tibble(x = 1:3, key = c("a", "b", "c")),
+    bar = tibble(y = 4:6, key = c("a", "c", "d")),
+    baz = tibble(z = 7L, key = "d")
   )
 
-  exp <- tibble::tibble(
+  exp <- tibble(
     key = chr(),
-    foo = tibble::tibble(x = int()),
-    bar = tibble::tibble(y = int()),
-    baz = tibble::tibble(z = int())
+    foo = tibble(x = int()),
+    bar = tibble(y = int()),
+    baz = tibble(z = int())
   )
   expect_identical(bare_join("key", !!!dfs, .unmatched = "drop"), exp)
 
@@ -66,16 +66,16 @@ test_that("bare_join() handles fully unmatched keys", {
 
 test_that("bare_join() matches single key", {
   dfs <- list(
-    foo = tibble::tibble(x = 1:3, key = c("a", "b", "c")),
-    bar = tibble::tibble(y = 4:6, key = c("a", "b", "d")),
-    baz = tibble::tibble(z = 7L, key = "b")
+    foo = tibble(x = 1:3, key = c("a", "b", "c")),
+    bar = tibble(y = 4:6, key = c("a", "b", "d")),
+    baz = tibble(z = 7L, key = "b")
   )
 
-  exp <- tibble::tibble(
+  exp <- tibble(
     key = "b",
-    foo = tibble::tibble(x = 2L),
-    bar = tibble::tibble(y = 5L),
-    baz = tibble::tibble(z = 7L)
+    foo = tibble(x = 2L),
+    bar = tibble(y = 5L),
+    baz = tibble(z = 7L)
   )
   expect_identical(bare_join("key", !!!dfs, .unmatched = "drop"), exp)
 
@@ -84,16 +84,16 @@ test_that("bare_join() matches single key", {
 
 test_that("bare_join() matches two keys", {
   dfs <- list(
-    foo = tibble::tibble(x = 1:3, key = c("a", "b", "c")),
-    bar = tibble::tibble(y = 4:6, key = c("a", "b", "d")),
-    baz = tibble::tibble(z = 7L, key = c("b", "a"))
+    foo = tibble(x = 1:3, key = c("a", "b", "c")),
+    bar = tibble(y = 4:6, key = c("a", "b", "d")),
+    baz = tibble(z = 7L, key = c("b", "a"))
   )
 
-  exp <- tibble::tibble(
+  exp <- tibble(
     key = c("a", "b"),
-    foo = tibble::tibble(x = c(1L, 2L)),
-    bar = tibble::tibble(y = c(4L, 5L)),
-    baz = tibble::tibble(z = c(7L, 7L))
+    foo = tibble(x = c(1L, 2L)),
+    bar = tibble(y = c(4L, 5L)),
+    baz = tibble(z = c(7L, 7L))
   )
   expect_identical(bare_join("key", !!!dfs, .unmatched = "drop"), exp)
 
@@ -102,16 +102,16 @@ test_that("bare_join() matches two keys", {
 
 test_that("bare_join() matches on all keys", {
   dfs <- list(
-    foo = tibble::tibble(x = 1:3, key = c("a", "b", "c")),
-    bar = tibble::tibble(y = 4:6, key = c("c", "b", "a")),
-    baz = tibble::tibble(z = 7L, key = c("b", "a", "c"))
+    foo = tibble(x = 1:3, key = c("a", "b", "c")),
+    bar = tibble(y = 4:6, key = c("c", "b", "a")),
+    baz = tibble(z = 7L, key = c("b", "a", "c"))
   )
 
-  exp <- tibble::tibble(
+  exp <- tibble(
     key = c("a", "b", "c"),
-    foo = tibble::tibble(x = 1:3),
-    bar = tibble::tibble(y = 6:4),
-    baz = tibble::tibble(z = c(7L, 7L, 7L))
+    foo = tibble(x = 1:3),
+    bar = tibble(y = 6:4),
+    baz = tibble(z = c(7L, 7L, 7L))
   )
   expect_identical(bare_join("key", !!!dfs, .unmatched = "drop"), exp)
   expect_identical(bare_join("key", !!!dfs, .unmatched = "error"), exp)
@@ -120,8 +120,8 @@ test_that("bare_join() matches on all keys", {
 test_that("bare_join() fails when keys are duplicated", {
   expect_error(
     bare_join("key",
-      foo = tibble::tibble(x = 1:3, key = c("a", "a", "b")),
-      bar = tibble::tibble(y = 3:1, key = c("a", "b", "c"))
+      foo = tibble(x = 1:3, key = c("a", "a", "b")),
+      bar = tibble(y = 3:1, key = c("a", "b", "c"))
     ),
     "can't be duplicated"
   )

@@ -176,7 +176,7 @@ db_todo_add <- function(pkgdir, packages) {
 
 db_groups <- function(pkgdir) {
   groups <- dbGetQuery(db(pkgdir), "SELECT DISTINCT * FROM groups")
-  tibble::as_tibble(groups)
+  as_tibble(groups)
 }
 
 #' @importFrom DBI dbExecute sqlInterpolate

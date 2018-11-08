@@ -29,7 +29,7 @@ test_that("pkgs_validate() checks types", {
 
 test_that("pkgs_validate() accepts character vectors", {
   out <- pkgs_validate(c("foo", "bar"))
-  exp <- tibble::tibble(package = c("foo", "bar"))
+  exp <- tibble(package = c("foo", "bar"))
   expect_identical(out, exp)
 })
 
@@ -45,18 +45,18 @@ test_that("pkgs_validate() removes duplicated rows", {
   )
 
   out <- pkgs_validate(df)
-  exp <- tibble::tibble(repo = c("a", "b"), package = c("foo", "bar"))
+  exp <- tibble(repo = c("a", "b"), package = c("foo", "bar"))
   expect_identical(out, exp)
 })
 
 test_that("pkgs_groups() returns unique groups", {
   expect_length(pkgs_groups(data.frame(package = "foo")), 0)
 
-  data <- tibble::tibble(repo = c("CRAN", "bioc"), package = c("foo", "bar"))
-  expect_identical(pkgs_groups(data), tibble::tibble(repo = c("CRAN", "bioc")))
+  data <- tibble(repo = c("CRAN", "bioc"), package = c("foo", "bar"))
+  expect_identical(pkgs_groups(data), tibble(repo = c("CRAN", "bioc")))
 
-  data <- tibble::tibble(repo = c("CRAN", "bioc", "CRAN"), package = c("foo", "bar", "baz"))
-  expect_identical(pkgs_groups(data), tibble::tibble(repo = c("CRAN", "bioc")))
+  data <- tibble(repo = c("CRAN", "bioc", "CRAN"), package = c("foo", "bar", "baz"))
+  expect_identical(pkgs_groups(data), tibble(repo = c("CRAN", "bioc")))
 })
 
 test_that("pkgs_revdeps() returns tibble", {

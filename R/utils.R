@@ -117,7 +117,7 @@ merge_ <- function(x, y, by, ...) {
   nms <- unique(c(names(x), names(y)))
   out <- out[nms]
 
-  tibble::as_tibble(out)
+  as_tibble(out)
 }
 
 # The following join functions only support `by` of length 1, and 2
@@ -139,8 +139,8 @@ nest_join <- function(x, y, by, name = "y") {
     out[inds[[i]]] <- list(y_nested[i, ])
   }
 
-  out <- cbind(x, tibble::tibble(!!name := out))
-  tibble::as_tibble(out)
+  out <- cbind(x, tibble(!!name := out))
+  as_tibble(out)
 }
 
 bare_join <- function(.by,
@@ -150,7 +150,7 @@ bare_join <- function(.by,
   dfs <- list2(...)
   check_join_inputs(.by, dfs)
 
-  dfs <- map(dfs, tibble::as_tibble)
+  dfs <- map(dfs, as_tibble)
 
   strict <- match.arg(.unmatched) == "error"
   inds <- join_indices(.by, dfs, strict)
@@ -162,7 +162,7 @@ bare_join <- function(.by,
     dfs <- map(dfs, function(df) df[-match(.by, names(df))])
   }
 
-  tibble::tibble(!!.by := by_col, !!!dfs)
+  tibble(!!.by := by_col, !!!dfs)
 }
 
 join_indices <- function(by, dfs, strict = FALSE) {
@@ -231,7 +231,7 @@ groups_join <- function(packages, db) {
   empty_y <- !NROW(y)
 
   if (empty_x && empty_y) {
-    tibble::tibble()
+    tibble()
   } else if (empty_x) {
     y
   } else if (empty_y) {

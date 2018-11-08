@@ -10,7 +10,7 @@ pkgs_revdeps <- function(package,
   n <- length(package)
 
   if (n == 0) {
-    return(tibble::tibble(package = chr()))
+    return(tibble(package = chr()))
   }
 
   repos <- get_repos(bioc = bioc)
@@ -25,7 +25,7 @@ pkgs_revdeps <- function(package,
   group <- imap(pkgs_data, function(df, n) rep_len(n, NROW(df)))
   group <- bang(c(!!!unname(group)))
 
-  tibble::tibble(group = group, !!!data)
+  tibble(group = group, !!!data)
 }
 
 pkgs_revdeps_data <- function(repos, package, dependencies) {
@@ -106,7 +106,7 @@ parse_deps <- function(deps) {
 
 pkgs_validate <- function(packages) {
   if (is_character(packages)) {
-    data <- tibble::tibble(package = packages)
+    data <- tibble(package = packages)
     return(data)
   }
 
@@ -117,7 +117,7 @@ pkgs_validate <- function(packages) {
     abort("`packages` must contain a `package` column")
   }
 
-  packages <- tibble::as_tibble(packages)
+  packages <- as_tibble(packages)
   unduplicate(packages, "package")
 }
 
