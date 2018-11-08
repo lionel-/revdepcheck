@@ -140,11 +140,16 @@ join <- function(.by,
   dfs[to_nest] <- map2(dfs[to_nest], inds[to_nest], subset_nested_df_col, keep = .keep, by = .by)
   dfs[!to_nest] <- map2(dfs[!to_nest], inds[!to_nest], subset_df_col, keep = .keep, by = .by)
 
+  dfs <- dfs_splice(dfs, .by)
+
   tibble(!!.by := by_col, !!!dfs)
 }
 
 nesting <- function(x) {
   new_box(x, "join_nesting_box")
+}
+is_nesting_box <- function(x) {
+  is_box(x, "join_nesting_box")
 }
 
 join_indices <- function(by, dfs, strict = FALSE) {
@@ -211,20 +216,41 @@ subset_df_col <- function(df, idx, keep, by) {
   df_col
 }
 
+dfs_splice <- function(dfs, by) {
+  to_splice <- names(dfs) == ""
+  if (!any(to_splice)) {
+    return(dfs)
+  }
+
+  dfs <- map_if(dfs, to_splice, splice)
+  flatten_if(dfs, is_spliced)
+}
+
 check_join_inputs <- function(by, dfs) {
   stopifnot(
     # Multiple keys are unimplemented
     is_string(by),
 
     is_list(dfs) && length(dfs) >= 1L,
-    is_named(dfs),
 
     every(dfs, is_join_df, by = by)
   )
+
+  spliced <- dfs[names(dfs) == ""]
+
+  if (some(spliced, is_nesting_box)) {
+    abort("Can't splice nesting tibbles (currently)")
+  }
+
+  spliced <- map(spliced, function(df) df[-match(by, names(df))])
+  all_nms <- unlist(map(spliced, names))
+  if (anyDuplicated(all_nms)) {
+    abort("Can't join tibbles with homonym columns")
+  }
 }
 
 is_join_df <- function(df, by) {
-  if (is_box(df, "join_nesting_box")) {
+  if (is_nesting_box(df)) {
     df <- unbox(df)
   }
 
