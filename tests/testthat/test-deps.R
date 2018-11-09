@@ -54,7 +54,6 @@ test_that("pkgs_revdeps() returns tibble", {
   scoped_options(revdepcheck__limit_revdeps = TRUE)
 
   pkgs <- pkgs_revdeps("tidyverse")
-  expect_identical(dim(pkgs), c(2L, 2L))
   expect_named(pkgs, c("repo", "package"))
 })
 

@@ -306,3 +306,16 @@ n_dim <- function(x) {
   dim <- dim(x) %|0|% 1L
   length(dim)
 }
+
+subset_groups <- function(data, group_nms, n) {
+  data <- as_tibble(data)
+
+  if (!length(group_nms)) {
+    return(data[n, ])
+  }
+
+  # paste0() + rev() produces original ordering
+  product <- bang(paste0(!!!data[group_nms]))
+  subsets <- rev(map(split(data, product), head, n))
+  bang(rbind(!!!subsets))
+}

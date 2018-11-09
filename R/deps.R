@@ -16,28 +16,36 @@ pkgs_revdeps <- function(package,
   repos <- get_repos(bioc = bioc)
   if (n == 1) {
     data <- pkgs_revdeps_data(repos, package, dependencies)
+    data <- pkgs_revdeps_subset(data)
     return(data)
   }
 
   pkgs_data <- map(set_names(package), pkgs_revdeps_data, repos = repos, dependencies)
   data <- bang(rbind(!!!pkgs_data))
 
-  group <- imap(pkgs_data, function(df, n) rep_len(n, NROW(df)))
-  group <- bang(c(!!!unname(group)))
+  set <- imap(pkgs_data, function(df, n) rep_len(n, NROW(df)))
+  set <- bang(c(!!!unname(set)))
 
-  tibble(group = group, !!!data)
+  data <- tibble(set = set, !!!data)
+  pkgs_revdeps_subset(data)
+}
+
+pkgs_revdeps_subset <- function(pkgs) {
+  pkgs <- pkgs[!duplicated(pkgs$package), ]
+
+  # For easier debugging
+  if (is_true(peek_option("revdepcheck__limit_revdeps"))) {
+    group_nms <- names(pkgs)[-match("package", names(pkgs))]
+    subset_groups(pkgs, group_nms, 2)
+  } else {
+    pkgs
+  }
 }
 
 pkgs_revdeps_data <- function(repos, package, dependencies) {
   pkgs <- flatten_names(map(repos, get_packages, package, dependencies))
   pkgs <- map(pkgs, tibble::enframe, name = "repo", value = "package")
   pkgs <- bang(rbind(!!!pkgs))
-
-  if (is_true(peek_option("revdepcheck__limit_revdeps"))) {
-    n <- min(2, nrow(pkgs))
-    pkgs <- pkgs[seq_len(n), ]
-  }
-
   pkgs
 }
 
