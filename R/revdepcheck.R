@@ -51,11 +51,12 @@
 #' @importFrom tibble tibble as_tibble
 
 revdep_check <- function(pkg = ".",
-                         dependencies = c("Depends", "Imports", "Suggests", "LinkingTo"),
+                         revdeps = NULL,
                          quiet = TRUE,
                          timeout = as.difftime(10, units = "mins"),
                          num_workers = 1,
-                         bioc = TRUE) {
+                         bioc = NULL,
+                         dependencies = NULL) {
 
   pkg <- pkg_check(pkg)
   dir_setup(pkg)
@@ -63,11 +64,19 @@ revdep_check <- function(pkg = ".",
     db_setup(pkg)
   }
 
-  if (is_pkgs_revdeps(dependencies)) {
-    revdeps <- dependencies
-  } else {
-    pkgname <- pkg_name(pkg)
-    revdeps <- pkgs_revdeps(pkgname, dependencies, bioc = bioc)
+  if (!is_null(bioc)) {
+    abort("The `bioc` argument is defunct. Please use `pkgs_revdeps()` instead.")
+  }
+  if (!is_null(dependencies)) {
+    abort("The `dependencies` argument is defunct. Please use `pkgs_revdeps()` instead.")
+  }
+
+  if (is_null(revdeps)) {
+    revdeps <- pkgs_revdeps(pkg_name(pkg))
+  } else if (is_character(revdeps)) {
+    abort("`revdep_check()` no longer takes dependencies. Please use `pkgs_revdeps()` instead.")
+  } else if (!is_pkgs_revdeps(revdeps)) {
+    abort("`revdeps` must be `NULL` or a tibble as returned by `pkgs_revdeps()`")
   }
 
   did_something <- FALSE
