@@ -319,3 +319,7 @@ subset_groups <- function(data, group_nms, n) {
   subsets <- rev(map(split(data, product), head, n))
   bang(rbind(!!!subsets))
 }
+
+paste_line <- function(...) {
+  paste(chr(...), collapse = "\n")
+}

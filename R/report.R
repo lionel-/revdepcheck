@@ -138,18 +138,30 @@ format_details_bullet <- function(x, max_lines = 20) {
 #' @export
 #' @rdname revdep_report_summary
 #' @importFrom utils available.packages
+#' @param groups A named character vector to specify group levels to
+#'   summarise in. The name indexes a group and the value indexes a
+#'   level.
 
-revdep_report_cran <- function(pkg = ".") {
+revdep_report_cran <- function(pkg = ".", groups = NULL) {
   opts <- options("crayon.enabled" = FALSE)
   on.exit(options(opts), add = TRUE)
 
   results <- db_results(pkg)
+
+  results <- revdep_report_cran_subset(results, groups)
+  revdep_report_cran_check_groups(results$groups)
+
+  if (has_name(results$groups, "repo")) {
+    on_cran <- results$groups$repo == "CRAN"
+  } else {
+    warn("Can't find `repo` column in results - Assuming all CRAN packages")
+    on_cran <- rep(TRUE, nrow(results))
+  }
+
   comparisons <- results$comparisons
   package <- results$package
 
   status <- map_chr(comparisons, function(x) x$status %|0|% "i")
-  on_cran <- map_lgl(comparisons, on_cran)
-
   broke <- status == "-" & on_cran
   failed <- !(status %in% c("+", "-")) & on_cran
 
@@ -193,9 +205,48 @@ revdep_report_cran <- function(pkg = ".") {
   invisible()
 }
 
-on_cran <- function(x) {
-  desc <- desc::desc(text = x$new$description)
-  identical(desc$get("Repository")[[1]], "CRAN")
+revdep_report_cran_subset <- function(results, groups) {
+  if (is_null(groups)) {
+    return(results)
+  }
+
+  if (!is_named(groups)) {
+    abort("`groups` must be a named character vector")
+  }
+
+  groups_data <- results$groups
+
+  inds <- imap(groups, function(level, group) {
+    if (!has_name(groups_data, group)) {
+      abort(sprintf("Unknown group `%s`", group))
+    }
+
+    idx <- which(groups_data[[group]] == level)
+    if (!sum(idx)) {
+      abort("Can't find level `%s` within group `%s`", level, group)
+    }
+
+    idx
+  })
+
+  idx <- bang(unique(c(!!!inds)))
+  results[idx, ]
+}
+
+revdep_report_cran_check_groups <- function(groups) {
+  groups$repo <- NULL
+  product <- bang(interaction(!!!groups))
+
+  if (length(levels(product)) > 1L) {
+    inform(paste_line(
+      "The summary aggregates over the following groups:",
+      "",
+      !!!format(unduplicate(groups)),
+      "",
+      "Pass `groups` to specify group levels to summarise in.",
+      ""
+    ))
+  }
 }
 
 #' @export
