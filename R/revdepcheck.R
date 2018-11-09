@@ -55,8 +55,7 @@ revdep_check <- function(pkg = ".",
                          quiet = TRUE,
                          timeout = as.difftime(10, units = "mins"),
                          num_workers = 1,
-                         bioc = TRUE,
-                         extra = NULL) {
+                         bioc = TRUE) {
 
   pkg <- pkg_check(pkg)
   dir_setup(pkg)
@@ -68,7 +67,7 @@ revdep_check <- function(pkg = ".",
     revdeps <- dependencies
   } else {
     pkgname <- pkg_name(pkg)
-    revdeps <- pkgs_revdeps(c(pkgname, extra), dependencies, bioc = bioc)
+    revdeps <- pkgs_revdeps(pkgname, dependencies, bioc = bioc)
   }
 
   did_something <- FALSE
