@@ -3,10 +3,17 @@
 #' `pkg_revdeps()` returns a tibble of reverse dependencies that you
 #' can pass to `revdep_check()`.
 #'
-#' @inheritParams revdep_check
+#' @param pkg A character vector of package names whose reverse
+#'   dependencies should be checked. If `NULL` or empty, all CRAN
+#'   packages (and all Bioconductor packages if `bioc` is `TRUE`) are
+#'   returned.
 #' @param dependencies Which types of revdeps should be checked. For
 #'   CRAN release, we recommend using the default.
 #' @param bioc Also check revdeps that live in BioConductor?
+#'
+#' @return A tibble with a `package` column. If `pkg` contains
+#'   multiple packages, these are recorded in an additional column
+#'   `set` that allows you to match revdeps to elements of `pkg`.
 #'
 #' @export
 #' @examples
@@ -21,20 +28,22 @@
 #' # Compute revdeps of rlang, dplyr and purrr
 #' pkgs_revdeps(c("rlang", "dplyr", "purrr"))
 #'
+#' # Return all packages of CRAN and Bioconductor:
+#' pkgs_revdeps(NULL)
+#'
+#' # Return all packages of CRAN:
+#' pkgs_revdeps(NULL, bioc = FALSE)
+#'
 #' }
 pkgs_revdeps <- function(pkg,
                          dependencies = c("Depends", "Imports",
                                           "Suggests", "LinkingTo"),
                          bioc = TRUE) {
-  stopifnot(is_character(pkg))
+  stopifnot(is_null(pkg) || is_character(pkg))
+
   n <- length(pkg)
-
-  if (n == 0) {
-    return(tibble(pkg = chr()))
-  }
-
   repos <- get_repos(bioc = bioc)
-  if (n == 1) {
+  if (n < 2) {
     data <- pkgs_revdeps_data(repos, pkg, dependencies)
     data <- pkgs_revdeps_subset(data)
     return(data)
@@ -96,7 +105,12 @@ get_packages <- function(repos, package, dependencies) {
   alldeps <- allpkgs[, dependencies, drop = FALSE]
   alldeps[is.na(alldeps)] <- ""
   deps <- apply(alldeps, 1, paste, collapse = ",")
-  rd <- grepl(paste0("\\b", package, "\\b"), deps)
+
+  if (is_null(package)) {
+    rd <- TRUE
+  } else {
+    rd <- grepl(paste0("\\b", package, "\\b"), deps)
+  }
 
   pkgs <- unname(allpkgs[rd, "Package"])
   pkgs[order(tolower(pkgs))]

@@ -8,12 +8,20 @@ pkgs_revdeps(pkg, dependencies = c("Depends", "Imports", "Suggests",
   "LinkingTo"), bioc = TRUE)
 }
 \arguments{
-\item{pkg}{Path to package.}
+\item{pkg}{A character vector of package names whose reverse
+dependencies should be checked. If \code{NULL} or empty, all CRAN
+packages (and all Bioconductor packages if \code{bioc} is \code{TRUE}) are
+returned.}
 
 \item{dependencies}{Which types of revdeps should be checked. For
 CRAN release, we recommend using the default.}
 
 \item{bioc}{Also check revdeps that live in BioConductor?}
+}
+\value{
+A tibble with a \code{package} column. If \code{pkg} contains
+multiple packages, these are recorded in an additional column
+\code{set} that allows you to match revdeps to elements of \code{pkg}.
 }
 \description{
 \code{pkg_revdeps()} returns a tibble of reverse dependencies that you
@@ -30,6 +38,12 @@ pkgs_revdeps("rlang", bioc = FALSE)
 
 # Compute revdeps of rlang, dplyr and purrr
 pkgs_revdeps(c("rlang", "dplyr", "purrr"))
+
+# Return all packages of CRAN and Bioconductor:
+pkgs_revdeps(NULL)
+
+# Return all packages of CRAN:
+pkgs_revdeps(NULL, bioc = FALSE)
 
 }
 }
