@@ -33,16 +33,38 @@
 #' If you want to start again from scratch, run `revdep_reset()`.
 #'
 #' @param pkg Path to package.
-#' @param dependencies Which types of revdeps should be checked. For CRAN
-#'   release, we recommend using the default.
+#' @param revdeps A tibble as returned from [pkgs_revdeps()]. If
+#'   `NULL` (the default), all the revdeps of `pkg` are checked,
+#'   including those of Bioconductor.
+#'
+#'   If a tibble, it must include a column `package` and can contain
+#'   additional columns that will be used as groups in the final
+#'   report.
 #' @param quiet Suppress output from internal processes?
 #' @param timeout Maximum time to wait (in seconds) for `R CMD check` to
 #'   complete. Default is 10 minutes.
 #' @param num_workers Number of parallel workers to use
-#' @param bioc Also check revdeps that live in BioConductor?
+#' @param dependencies,bioc Deprecated. See [pkgs_revdeps()].
 #'
 #' @seealso To see more details of problems during a run, call
 #'   [revdep_summary()] and [revdep_details()] in another process.
+#'
+#' @section Structure of the revdeps tibble:
+#'
+#' You normally use [pkgs_revdeps()] to create a tibble suitable as
+#' `revdeps` argument. You can also create it manually:
+#'
+#' * There must be a `package` column containing a character vector of
+#'   packages to check.
+#'
+#' * All other columns determine groups of packages. The groups are
+#'   checked sequentially and are included in the summary report
+#'   created by [revdep_report_summary()].
+#'
+#' * If a group column named `repo` is present, it is used by
+#'   [revdep_report_cran()] to distinguish between CRAN and
+#'   Bioconductor packages. It should be a character vector. The value
+#'   `"CRAN"` determines whether a package comes from CRAN.
 #'
 #' @export
 #' @importFrom remotes install_local

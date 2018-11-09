@@ -1,7 +1,27 @@
-
-#' @importFrom remotes bioc_install_repos
-#' @importFrom crancache available_packages
-
+#' Compute package revdeps
+#'
+#' `pkg_revdeps()` returns a tibble of reverse dependencies that you
+#' can pass to `revdep_check()`.
+#'
+#' @inheritParams revdep_check
+#' @param dependencies Which types of revdeps should be checked. For
+#'   CRAN release, we recommend using the default.
+#' @param bioc Also check revdeps that live in BioConductor?
+#'
+#' @export
+#' @examples
+#' if (FALSE) {
+#'
+#' # Compute revdeps of rlang
+#' pkgs_revdeps("rlang")
+#'
+#' # Don't include Bioconductor revdeps
+#' pkgs_revdeps("rlang", bioc = FALSE)
+#'
+#' # Compute revdeps of rlang, dplyr and purrr
+#' pkgs_revdeps(c("rlang", "dplyr", "purrr"))
+#'
+#' }
 pkgs_revdeps <- function(pkg,
                          dependencies = c("Depends", "Imports",
                                           "Suggests", "LinkingTo"),
@@ -49,6 +69,7 @@ pkgs_revdeps_data <- function(repos, package, dependencies) {
   pkgs
 }
 
+#' @importFrom remotes bioc_install_repos
 get_repos <- function(bioc) {
   repos <- c(
     getOption("repos"),
@@ -65,6 +86,7 @@ get_repos <- function(bioc) {
   repos
 }
 
+#' @importFrom crancache available_packages
 get_packages <- function(repos, package, dependencies) {
   if (!length(repos)) {
     return(chr())
