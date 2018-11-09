@@ -64,11 +64,18 @@ revdep_check <- function(pkg = ".",
     db_setup(pkg)
   }
 
+  if (is_pkgs_revdeps(dependencies)) {
+    revdeps <- dependencies
+  } else {
+    pkgname <- pkg_name(pkg)
+    revdeps <- pkgs_revdeps(c(pkgname, extra), dependencies, bioc = bioc)
+  }
+
   did_something <- FALSE
   repeat {
     stage <- db_metadata_get(pkg, "todo") %|0|% "init"
     switch(stage,
-      init =    revdep_init(pkg, dependencies = dependencies, bioc = bioc, extra = extra),
+      init =    revdep_init(pkg, revdeps),
       install = revdep_install(pkg, quiet = quiet),
       run =     revdep_run(pkg, quiet = quiet, timeout = timeout, num_workers = num_workers),
       report =  revdep_final_report(pkg),
@@ -97,11 +104,7 @@ revdep_setup <- function(pkg = ".") {
 }
 
 
-revdep_init <- function(pkg = ".",
-                        dependencies = c("Depends", "Imports",
-                                         "Suggests", "LinkingTo"),
-                        bioc = TRUE,
-                        extra = NULL) {
+revdep_init <- function(pkg = ".", revdeps = chr()) {
 
   pkg <- pkg_check(pkg)
   db_clean(pkg)              # Delete all records
@@ -109,12 +112,6 @@ revdep_init <- function(pkg = ".",
   "!DEBUG getting reverse dependencies for `basename(pkg)`"
   status("INIT", "Computing revdeps")
 
-  if (is_pkgs_revdeps(dependencies)) {
-    revdeps <- dependencies
-  } else {
-    pkgname <- pkg_name(pkg)
-    revdeps <- pkgs_revdeps(c(pkgname, extra), dependencies, bioc = bioc)
-  }
   db_todo_add(pkg, revdeps)
 
   db_metadata_set(pkg, "todo", "install")
