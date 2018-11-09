@@ -2,25 +2,25 @@
 #' @importFrom remotes bioc_install_repos
 #' @importFrom crancache available_packages
 
-pkgs_revdeps <- function(package,
+pkgs_revdeps <- function(pkg,
                          dependencies = c("Depends", "Imports",
                                           "Suggests", "LinkingTo"),
                          bioc = TRUE) {
-  stopifnot(is_character(package))
-  n <- length(package)
+  stopifnot(is_character(pkg))
+  n <- length(pkg)
 
   if (n == 0) {
-    return(tibble(package = chr()))
+    return(tibble(pkg = chr()))
   }
 
   repos <- get_repos(bioc = bioc)
   if (n == 1) {
-    data <- pkgs_revdeps_data(repos, package, dependencies)
+    data <- pkgs_revdeps_data(repos, pkg, dependencies)
     data <- pkgs_revdeps_subset(data)
     return(data)
   }
 
-  pkgs_data <- map(set_names(package), pkgs_revdeps_data, repos = repos, dependencies)
+  pkgs_data <- map(set_names(pkg), pkgs_revdeps_data, repos = repos, dependencies)
   data <- bang(rbind(!!!pkgs_data))
 
   set <- imap(pkgs_data, function(df, n) rep_len(n, NROW(df)))
