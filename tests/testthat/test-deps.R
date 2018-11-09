@@ -49,11 +49,11 @@ test_that("pkgs_validate() removes duplicated rows", {
   expect_identical(out, exp)
 })
 
-test_that("pkgs_revdeps() returns tibble", {
+test_that("revdep_pkgs() returns tibble", {
   skip_if_offline()
   scoped_options(revdepcheck__limit_revdeps = TRUE)
 
-  pkgs <- pkgs_revdeps("tidyverse")
+  pkgs <- revdep_pkgs("tidyverse")
   expect_named(pkgs, c("repo", "package"))
 })
 

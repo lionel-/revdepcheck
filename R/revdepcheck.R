@@ -33,7 +33,7 @@
 #' If you want to start again from scratch, run `revdep_reset()`.
 #'
 #' @param pkg Path to package.
-#' @param revdeps A tibble as returned from [pkgs_revdeps()]. If
+#' @param revdeps A tibble as returned from [revdep_pkgs()]. If
 #'   `NULL` (the default), all the revdeps of `pkg` are checked,
 #'   including those of Bioconductor.
 #'
@@ -44,14 +44,14 @@
 #' @param timeout Maximum time to wait (in seconds) for `R CMD check` to
 #'   complete. Default is 10 minutes.
 #' @param num_workers Number of parallel workers to use
-#' @param dependencies,bioc Deprecated. See [pkgs_revdeps()].
+#' @param dependencies,bioc Deprecated. See [revdep_pkgs()].
 #'
 #' @seealso To see more details of problems during a run, call
 #'   [revdep_summary()] and [revdep_details()] in another process.
 #'
 #' @section Structure of the revdeps tibble:
 #'
-#' You normally use [pkgs_revdeps()] to create a tibble suitable as
+#' You normally use [revdep_pkgs()] to create a tibble suitable as
 #' `revdeps` argument. You can also create it manually:
 #'
 #' * There must be a `package` column containing a character vector of
@@ -87,18 +87,18 @@ revdep_check <- function(pkg = ".",
   }
 
   if (!is_null(bioc)) {
-    abort("The `bioc` argument is defunct. Please use `pkgs_revdeps()` instead.")
+    abort("The `bioc` argument is defunct. Please use `revdep_pkgs()` instead.")
   }
   if (!is_null(dependencies)) {
-    abort("The `dependencies` argument is defunct. Please use `pkgs_revdeps()` instead.")
+    abort("The `dependencies` argument is defunct. Please use `revdep_pkgs()` instead.")
   }
 
   if (is_null(revdeps)) {
-    revdeps <- pkgs_revdeps(pkg_name(pkg))
+    revdeps <- revdep_pkgs(pkg_name(pkg))
   } else if (is_character(revdeps)) {
-    abort("`revdep_check()` no longer takes dependencies. Please use `pkgs_revdeps()` instead.")
+    abort("`revdep_check()` no longer takes dependencies. Please use `revdep_pkgs()` instead.")
   } else if (!is_pkgs_revdeps(revdeps)) {
-    abort("`revdeps` must be `NULL` or a tibble as returned by `pkgs_revdeps()`")
+    abort("`revdeps` must be `NULL` or a tibble as returned by `revdep_pkgs()`")
   }
 
   did_something <- FALSE

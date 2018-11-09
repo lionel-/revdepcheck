@@ -14,7 +14,7 @@ revdep_reset(pkg = ".")
 \arguments{
 \item{pkg}{Path to package.}
 
-\item{revdeps}{A tibble as returned from \code{\link[=pkgs_revdeps]{pkgs_revdeps()}}. If
+\item{revdeps}{A tibble as returned from \code{\link[=revdep_pkgs]{revdep_pkgs()}}. If
 \code{NULL} (the default), all the revdeps of \code{pkg} are checked,
 including those of Bioconductor.
 
@@ -29,7 +29,7 @@ complete. Default is 10 minutes.}
 
 \item{num_workers}{Number of parallel workers to use}
 
-\item{dependencies, bioc}{Deprecated. See \code{\link[=pkgs_revdeps]{pkgs_revdeps()}}.}
+\item{dependencies, bioc}{Deprecated. See \code{\link[=revdep_pkgs]{revdep_pkgs()}}.}
 }
 \description{
 \code{revdep_check()} runs \code{R CMD check} on all reverse dependencies of your
@@ -64,7 +64,7 @@ If you want to start again from scratch, run \code{revdep_reset()}.
 \section{Structure of the revdeps tibble}{
 
 
-You normally use \code{\link[=pkgs_revdeps]{pkgs_revdeps()}} to create a tibble suitable as
+You normally use \code{\link[=revdep_pkgs]{revdep_pkgs()}} to create a tibble suitable as
 \code{revdeps} argument. You can also create it manually:
 \itemize{
 \item There must be a \code{package} column containing a character vector of

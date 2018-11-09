@@ -20,46 +20,46 @@
 #' if (FALSE) {
 #'
 #' # Compute revdeps of rlang
-#' pkgs_revdeps("rlang")
+#' revdep_pkgs("rlang")
 #'
 #' # Don't include Bioconductor revdeps
-#' pkgs_revdeps("rlang", bioc = FALSE)
+#' revdep_pkgs("rlang", bioc = FALSE)
 #'
 #' # Compute revdeps of rlang, dplyr and purrr
-#' pkgs_revdeps(c("rlang", "dplyr", "purrr"))
+#' revdep_pkgs(c("rlang", "dplyr", "purrr"))
 #'
 #' # Return all packages of CRAN and Bioconductor:
-#' pkgs_revdeps(NULL)
+#' revdep_pkgs(NULL)
 #'
 #' # Return all packages of CRAN:
-#' pkgs_revdeps(NULL, bioc = FALSE)
+#' revdep_pkgs(NULL, bioc = FALSE)
 #'
 #' }
-pkgs_revdeps <- function(pkg,
-                         dependencies = c("Depends", "Imports",
-                                          "Suggests", "LinkingTo"),
-                         bioc = TRUE) {
+revdep_pkgs <- function(pkg,
+                        dependencies = c("Depends", "Imports",
+                                         "Suggests", "LinkingTo"),
+                        bioc = TRUE) {
   stopifnot(is_null(pkg) || is_character(pkg))
 
   n <- length(pkg)
   repos <- get_repos(bioc = bioc)
   if (n < 2) {
-    data <- pkgs_revdeps_data(repos, pkg, dependencies)
-    data <- pkgs_revdeps_subset(data)
+    data <- revdep_pkgs_data(repos, pkg, dependencies)
+    data <- revdep_pkgs_subset(data)
     return(data)
   }
 
-  pkgs_data <- map(set_names(pkg), pkgs_revdeps_data, repos = repos, dependencies)
+  pkgs_data <- map(set_names(pkg), revdep_pkgs_data, repos = repos, dependencies)
   data <- bang(rbind(!!!pkgs_data))
 
   set <- imap(pkgs_data, function(df, n) rep_len(n, NROW(df)))
   set <- bang(c(!!!unname(set)))
 
   data <- tibble(set = set, !!!data)
-  pkgs_revdeps_subset(data)
+  revdep_pkgs_subset(data)
 }
 
-pkgs_revdeps_subset <- function(pkgs) {
+revdep_pkgs_subset <- function(pkgs) {
   pkgs <- pkgs[!duplicated(pkgs$package), ]
 
   # For easier debugging
@@ -71,7 +71,7 @@ pkgs_revdeps_subset <- function(pkgs) {
   }
 }
 
-pkgs_revdeps_data <- function(repos, package, dependencies) {
+revdep_pkgs_data <- function(repos, package, dependencies) {
   pkgs <- flatten_names(map(repos, get_packages, package, dependencies))
   pkgs <- map(pkgs, tibble::enframe, name = "repo", value = "package")
   pkgs <- bang(rbind(!!!pkgs))
