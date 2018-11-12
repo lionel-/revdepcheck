@@ -214,7 +214,7 @@ revdep_run <- function(pkg = ".", quiet = TRUE,
 
   todo <- db_todo(pkg)
   total <- nrow(todo)
-  count <- c(0L, total)
+  elapsed <- 0L
 
   groups <- unduplicate(todo$groups)
   n_groups <- nrow(groups)
@@ -232,8 +232,18 @@ revdep_run <- function(pkg = ".", quiet = TRUE,
       header2 <- paste0(nrow(group_todo), " packages")
       status(header1, header2)
 
-      revdep_run_group(pkg, group_todo$package, count, quiet, timeout, num_workers, bioc)
-      count <- c(count[[1]] + nrow(group_todo), total)
+      revdep_run_group(
+        pkg = pkg,
+        todo = group_todo$package,
+        total = total,
+        elapsed = elapsed,
+        quiet = quiet,
+        timeout = timeout,
+        num_workers = num_workers,
+        bioc = bioc
+      )
+
+      elapsed <- elapsed + nrow(group_todo)
 
       if (i != n_groups) {
         cat("\n")
@@ -241,7 +251,16 @@ revdep_run <- function(pkg = ".", quiet = TRUE,
     }
   } else {
     status("CHECK", paste0(nrow(todo), " packages"))
-    revdep_run_group(pkg, todo$package, count, quiet, timeout, num_workers, bioc)
+    revdep_run_group(
+      pkg = pkg,
+      todo = todo$package,
+      total = total,
+      elapsed = elapsed,
+      quiet = quiet,
+      timeout = timeout,
+      num_workers = num_workers,
+      bioc = bioc
+    )
   }
 
   end <- Sys.time()
@@ -254,7 +273,7 @@ revdep_run <- function(pkg = ".", quiet = TRUE,
   db_metadata_set(pkg, "todo", "report")
   invisible()
 }
-revdep_run_group <- function(pkg, todo, count, quiet = TRUE,
+revdep_run_group <- function(pkg, todo, total, elapsed = 0, quiet = TRUE,
                              timeout = as.difftime(10, units = "mins"),
                              num_workers = 1, bioc = TRUE) {
   pkgname <- pkg_name(pkg)
@@ -272,7 +291,8 @@ revdep_run_group <- function(pkg, todo, count, quiet = TRUE,
       state = if (length(todo)) "todo" else character(),
       stringsAsFactors = FALSE
     ),
-    count = count
+    total = total,
+    elapsed = elapsed
   )
 
   run_event_loop(state)
