@@ -18,6 +18,10 @@ as_deferred <- function(x) {
   }
 }
 
+async_r <- function(func, args = list(), ...) {
+  async::run_r_process(func, args, ...)$then(function(x) x$result)
+}
+
 # Takes a processx object and returns a `deferred`
 async_px <- function(px) {
   id <- NULL

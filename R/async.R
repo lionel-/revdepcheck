@@ -6,15 +6,50 @@
 #' @importFrom coro async await
 NULL
 
-on_load(async_check_package %<~% async(function(dir, pkg) {
+
+#' Compare local checks to CRAN checks
+#'
+#' @name cran_compare
+#' @description
+#'
+#' Compare local checks against CRAN checks. This can be useful for
+#' running checks on a local patched version of R with the CRAN
+#' results for that package. For this reason, the default value of
+#' `flavour_pattern` is `"devel"`
+#'
+#' @param dir The directory to perform local checks in.
+#' @param pkg_name A package name.
+#' @param flavour_pattern A regexp to match against
+#'   [rcmdcheck::cran_check_flavours()]. If multiple matches are
+#'   found, the first element is used. This determines which CRAN
+#'   check to compare against.
+NULL
+
+#' @rdname cran_compare
+#' @name async_check_package
+#' @usage async_check_package(dir, pkg)
+#' @export
+on_load(async_compare_to_cran %<~% async(function(dir, pkg_name, flavour_pattern = "devel") {
+  results <- await(async::when_all(
+    local = async_check_package(dir, pkg_name),
+    cran = async_px_cran_results(pkg_name, flavour_pattern = flavour_pattern)
+  ))
+
+  rcmdcheck::compare_checks(
+    old = results$cran,
+    new = results$local
+  )
+}))
+
+on_load(async_check_package %<~% async(function(dir, pkg_name) {
   fs::dir_create(dir)
 
   await(async::when_all(
-    async_px_install_library(dir, pkg),
-    async_px_download_package(dir, pkg)
+    async_px_install_library(dir, pkg_name),
+    async_px_download_package(dir, pkg_name)
   ))
 
-  await(async_px_check(dir, pkg))
+  await(async_px_check(dir, pkg_name))
 }))
 
 async_px_install_library <- function(dir, pkg_name, quiet = FALSE, env = character()) {
@@ -49,7 +84,7 @@ async_px_install_library <- function(dir, pkg_name, quiet = FALSE, env = charact
 
   ## CRANCACHE_REPOS makes sure that we only use cached CRAN packages,
   ## but not packages that were installed from elsewhere
-  async::run_r_process(
+  async_r(
     func = func,
     args = args,
     system_profile = FALSE,
@@ -73,7 +108,7 @@ async_px_download_package <- function(dir, pkg_name) {
 
   repos <- revdepcheck:::get_repos(bioc = TRUE)
 
-  async::run_r_process(
+  async_r(
     func = func,
     args = list(pkg_name = pkg_name, dir = pkg_dir, repos = repos),
     system_profile = FALSE,
@@ -114,3 +149,21 @@ on_load(async_px_check %<~% async(function(dir, pkg_name, env = character()) {
 
   px$parse_results()
 }))
+
+async_px_cran_results <- function(pkg, flavour_pattern = "devel") {
+  flavour <- cran_flavour(pkg, flavour_pattern)
+  fn <- function(pkg, flavours) rcmdcheck::cran_check_results(pkg, flavours)[[1]]
+
+  async_r(
+    fn,
+    args = list(pkg = pkg, flavours = flavour),
+    system_profile = FALSE,
+    user_profile = FALSE
+  )
+}
+
+cran_flavour <- function(pkg, flavour_pattern) {
+  flavours <- rcmdcheck::cran_check_flavours(pkg)
+  flavours <- flavours[grepl(flavour_pattern, flavours)]
+  flavours[[1]]
+}
