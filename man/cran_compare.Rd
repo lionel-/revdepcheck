@@ -2,20 +2,30 @@
 % Please edit documentation in R/async.R
 \name{cran_compare}
 \alias{cran_compare}
+\alias{revdep_check_against_cran}
 \alias{async_check_package}
 \title{Compare local checks to CRAN checks}
 \usage{
+revdep_check_against_cran(
+  dir,
+  pkgs,
+  num_workers = 2,
+  flavour_pattern = "devel"
+)
+
 async_check_package(dir, pkg)
 }
 \arguments{
 \item{dir}{The directory to perform local checks in.}
 
-\item{pkg_name}{A package name.}
+\item{pkgs}{A character vector of package names to check.}
 
 \item{flavour_pattern}{A regexp to match against
 \code{\link[rcmdcheck:cran_check_flavours]{rcmdcheck::cran_check_flavours()}}. If multiple matches are
 found, the first element is used. This determines which CRAN
 check to compare against.}
+
+\item{pkg_name}{A package name.}
 }
 \description{
 Compare local checks against CRAN checks. This can be useful for

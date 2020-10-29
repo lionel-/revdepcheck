@@ -18,12 +18,25 @@ NULL
 #' `flavour_pattern` is `"devel"`
 #'
 #' @param dir The directory to perform local checks in.
+#' @param pkgs A character vector of package names to check.
 #' @param pkg_name A package name.
 #' @param flavour_pattern A regexp to match against
 #'   [rcmdcheck::cran_check_flavours()]. If multiple matches are
 #'   found, the first element is used. This determines which CRAN
 #'   check to compare against.
-NULL
+#' @export
+revdep_check_against_cran <- function(dir,
+                                      pkgs,
+                                      num_workers = 2,
+                                      flavour_pattern = "devel") {
+  async::synchronise(
+    async::async_map(
+      pkgs,
+      function(pkg) async_compare_to_cran(dir, pkg, flavour_pattern),
+      .limit = num_workers
+    )
+  )
+}
 
 #' @rdname cran_compare
 #' @name async_check_package
