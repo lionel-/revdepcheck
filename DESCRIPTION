@@ -14,9 +14,11 @@ URL: https://github.com/r-lib/revdepcheck#readme
 BugReports: https://github.com/r-lib/revdepcheck/issues
 Imports: 
     assertthat,
+    async,
     brio,
-    curl,
     callr,
+    coro,
+    curl,
     cli,
     clisymbols,
     crancache (>= 0.0.0.9001),
@@ -51,10 +53,12 @@ Suggests:
     testthat,
     rmarkdown
 Remotes:
+    gaborcsardi/async,
+    r-lib/brio,
+    r-lib/coro,
     r-lib/crancache,
     r-lib/crayon,
-    r-lib/rcmdcheck,
-    r-lib/brio
+    r-lib/rcmdcheck@async
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
