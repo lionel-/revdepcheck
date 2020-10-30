@@ -66,14 +66,31 @@ on_load(async_check_package %<~% async(function(dir, pkg_name) {
 }))
 
 async_px_install_library <- function(dir, pkg_name, quiet = FALSE, env = character()) {
-  libdir <- fs::path(dir, pkg_name, "library")
-  fs::dir_create(libdir)
+  lib_dir <- fs::path(dir, pkg_name, "library")
+  fs::dir_create(lib_dir)
 
   # Create local crancache
   cache_dir <- fs::path(dir, "cache")
   fs::dir_create(cache_dir)
 
-  func <- function(libdir, packages, quiet, repos) {
+  opts <- revdepcheck:::deps_opts(pkg_name)
+  async_px_install(
+    lib_dir = lib_dir,
+    pkgs = opts$package,
+    repos = opts$repos,
+    cache_dir = cache_dir,
+    quiet = quiet,
+    env = env
+  )
+}
+
+async_px_install <- function(lib_dir,
+                             pkgs,
+                             repos,
+                             cache_dir = NULL,
+                             quiet = FALSE,
+                             env = character()) {
+  func <- function(lib_dir, pkgs, quiet, repos) {
     # Suboptimal: Overwrite default value which is "source" on r-devel
     local({
       .Platform$pkgType <- "mac.binary"
@@ -83,39 +100,36 @@ async_px_install_library <- function(dir, pkg_name, quiet = FALSE, env = charact
       rlang::env_bind(base, .Platform = .Platform)
     })
 
-    # Ensure callr is loaded before changing the libdir
+    # Ensure callr is loaded before changing the lib_dir
     requireNamespace("callr")
     ip <- crancache::install_packages
 
-    withr::with_libpaths(
-      libdir,
-      {
-	ip(
-	  packages,
-	  dependencies = FALSE,
-	  lib = libdir[1],
-	  quiet = quiet,
-	  repos = repos,
-          type = "both"  # Needed to build from cached binaries
-	)
-	stopifnot(all(packages %in% rownames(installed.packages(libdir[1]))))
-      }
-    )
+    withr::with_libpaths(lib_dir, {
+      ip(
+        pkgs,
+        dependencies = FALSE,
+        lib = lib_dir[1],
+        quiet = quiet,
+        repos = repos,
+        type = "both"  # Needed to build from cached binaries
+      )
+      stopifnot(all(pkgs %in% rownames(installed.packages(lib_dir[1]))))
+    })
   }
 
   args <- c(
-    revdepcheck:::deps_opts(pkg_name),
-
     list(
-      libdir = libdir,
+      pkgs = pkgs,
+      repos = repos,
+      lib_dir = lib_dir,
       quiet = quiet
     )
   )
 
-  # CRANCACHE_REPOS is unset to make sure we cache packages built
-  # locally, which is all packages when installing on r-devel.  We
+  # CRANCACHE_REPOS is unset to make sure we cache pkgs built
+  # locally, which is all pkgs when installing on r-devel.  We
   # install in a local cache to avoid polluting the global cache with
-  # packages built on random (possibly patched) R versions.
+  # pkgs built on random (possibly patched) R versions.
   async_r(
     func = func,
     args = args,
