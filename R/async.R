@@ -213,8 +213,10 @@ on_load(async_compare_to_cran %<~% async(function(dir, pkg_name, flavour_pattern
 on_load(async_check_package %<~% async(function(dir, pkg_name) {
   fs::dir_create(dir)
 
+  # We discard errors of library install so R CMD check can produce a
+  # formatted failure in the last step
   await(async::when_all(
-    async_px_install_library(dir, pkg_name),
+    async_catch(async_px_install_library(dir, pkg_name)),
     async_px_download_package(dir, pkg_name)
   ))
 
@@ -230,6 +232,15 @@ async_px_install_library <- function(dir, pkg_name, quiet = FALSE, env = charact
   fs::dir_create(cache_dir)
 
   opts <- revdepcheck:::deps_opts(pkg_name)
+
+  failed_path <- fs::path(dir, "install-failed.rds")
+  if (fs::file_exists(failed_path)) {
+    failed <- readRDS(failed_path)
+    if (any(opts$package %in% failed)) {
+      abort(sprintf("Can't install dependencies for package %s.", pkg_name))
+    }
+  }
+
   async_px_install(
     lib_dir = lib_dir,
     pkgs = opts$package,
@@ -339,7 +350,13 @@ on_load(async_px_check %<~% async(function(dir, pkg_name, env = character()) {
       stderr = stderr
     )
   )
-  await(async_px(px))
+
+  # Discard errors caused by exit status - we parse results from both
+  # stdout and stderr
+  tryCatch(
+    error = identity,
+    await(async_px(px))
+  )
 
   px$parse_results()
 }))
