@@ -45,16 +45,54 @@ populate_crancache <- function(cache_dir, pkgs, num_workers = 2) {
   fs::dir_create(lib_dir)
   on.exit(fs::dir_delete(lib_dir))
 
+  deps <- map(pkgs, revdepcheck:::deps_opts)
   deps_pkgs <- unique(do.call("c", map(deps, `[[`, "package")))
 
   deps_repos <- do.call("c", map(deps, `[[`, "repos"))
   deps_repos <- deps_repos[!duplicated(deps_repos)]
 
-  async::synchronise(
-    async::async_map(deps_pkgs, .limit = num_workers, function(pkg) {
-      async_catch(async_px_install(lib_dir, pkg, repos = deps_repos, cache_dir = cache_dir))
-    })
+  status("INIT", "Populating package cache")
+
+  pb <- progress::progress_bar$new(
+    total = length(deps_pkgs),
+    format = "[:current/:total] :elapsedfull | ETA: :eta | :pkg"
   )
+  current_pkgs <- character()
+
+  tick <- function(n = 1L) {
+    current <- paste0(current_pkgs, collapse = ", ")
+    pb$tick(n, token = list(pkg = current))
+  }
+  async_tick <- async(function() {
+    repeat {
+      tick(0)
+      await(async::delay(1))
+    }
+  })
+
+  out <- async::synchronise(
+    async::when_any(
+      async_tick(),
+      async::async_map(deps_pkgs, .limit = num_workers, async(function(pkg) {
+        current_pkgs <<- c(current_pkgs, pkg)
+
+        out <- await(async_catch(async_px_install(
+          lib_dir,
+          pkg,
+          repos = deps_repos,
+          cache_dir = cache_dir
+        )))
+
+        current_pkgs <<- current_pkgs[-match(pkg, current_pkgs)]
+        tick(1)
+
+        out
+      }))
+    )
+  )
+  pb$terminate()
+
+  invisible(out)
 }
 
 #' @rdname cran_compare
