@@ -47,9 +47,29 @@ populate_crancache <- function(cache_dir, pkgs, num_workers = 2) {
 
   deps <- map(pkgs, revdepcheck:::deps_opts)
   deps_pkgs <- unique(do.call("c", map(deps, `[[`, "package")))
+  deps_pkgs <- c(pkgs, deps_pkgs)
 
   deps_repos <- do.call("c", map(deps, `[[`, "repos"))
   deps_repos <- deps_repos[!duplicated(deps_repos)]
+
+  ensure_binary_pkgtype()
+  available <- suppressWarnings(withr::with_envvar(
+    c(
+      CRANCACHE_REPOS = NULL,
+      CRANCACHE_DIR = cache_dir
+    ),
+    crancache::available_packages(type = "binary")
+  ))
+
+  has_binary <- grepl("\\.tgz$", available[, "File"])
+  available <- available[has_binary, ]
+  deps_pkgs <- deps_pkgs[!deps_pkgs %in% rownames(available)]
+  deps_pkgs <- set_names(deps_pkgs)
+
+  if (!length(deps_pkgs)) {
+    return()
+  }
+
 
   status("INIT", "Populating package cache")
 
@@ -70,7 +90,7 @@ populate_crancache <- function(cache_dir, pkgs, num_workers = 2) {
     }
   })
 
-  out <- async::synchronise(
+  results <- async::synchronise(
     async::when_any(
       async_tick(),
       async::async_map(deps_pkgs, .limit = num_workers, async(function(pkg) {
@@ -92,7 +112,24 @@ populate_crancache <- function(cache_dir, pkgs, num_workers = 2) {
   )
   pb$terminate()
 
-  invisible(out)
+  invisible(results)
+}
+
+# Suboptimal: Overwrite default value which is "source" on r-devel
+# compiled fro_scratch
+ensure_binary_pkgtype <- function() {
+  if (!identical(Sys.info()[["sysname"]], "Darwin")) {
+    # TODO: non-Darwin systems
+    return()
+  }
+
+  .Platform$pkgType <- "mac.binary"
+  base <- ns_env("base")
+
+  env_binding_unlock(base, ".Platform")
+  on.exit(env_binding_lock(base, ".Platform"))
+
+  env_bind(base, .Platform = .Platform)
 }
 
 #' @rdname cran_compare
@@ -148,14 +185,8 @@ async_px_install <- function(lib_dir,
                              quiet = FALSE,
                              env = character()) {
   func <- function(lib_dir, pkgs, quiet, repos) {
-    # Suboptimal: Overwrite default value which is "source" on r-devel
-    local({
-      .Platform$pkgType <- "mac.binary"
-      base <- rlang::ns_env("base")
-      rlang::env_binding_unlock(base, ".Platform")
-      on.exit(rlang::env_binding_lock(base, ".Platform"))
-      rlang::env_bind(base, .Platform = .Platform)
-    })
+    ensure_binary_pkgtype <- get("ensure_binary_pkgtype", envir = asNamespace("revdepcheck"))
+    ensure_binary_pkgtype()
 
     # Ensure callr is loaded before changing the lib_dir
     requireNamespace("callr")
