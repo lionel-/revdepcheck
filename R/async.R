@@ -40,10 +40,22 @@ revdep_check_against_cran <- function(dir,
   cache_dir <- fs::path(dir, "cache")
   fs::dir_create(cache_dir)
 
-  results <- populate_crancache(cache_dir, pkgs, num_workers = num_workers)
+  # Don't try again to prepopulate cache with packages that failed to install
+  failed_path <- fs::path(dir, "install-failed.rds")
+  if (fs::file_exists(failed_path)) {
+    failed <- readRDS(failed_path)
+  } else {
+    failed <- NULL
+  }
 
-  # TODO: Don't try these again
-  failed <- map_lgl(results, inherits, "error")
+  results <- populate_crancache(cache_dir, pkgs, num_workers = num_workers, exclude = failed)
+
+  # Update failures
+  has_failed <- map_lgl(results, inherits, "error")
+  if (any(has_failed)) {
+    failed <- c(failed, names(results)[has_failed])
+    saveRDS(failed, failed_path)
+  }
 
 
   status("CHECK", paste0(length(pkgs), " packages"))
@@ -85,7 +97,7 @@ revdep_check_against_cran <- function(dir,
   )
 }
 
-populate_crancache <- function(cache_dir, pkgs, num_workers = 2) {
+populate_crancache <- function(cache_dir, pkgs, num_workers = 2, exclude = NULL) {
   lib_dir <- tempfile("temp_crancache")
   fs::dir_create(lib_dir)
   on.exit(fs::dir_delete(lib_dir))
@@ -109,6 +121,8 @@ populate_crancache <- function(cache_dir, pkgs, num_workers = 2) {
   has_binary <- grepl("\\.tgz$", available[, "File"])
   available <- available[has_binary, ]
   deps_pkgs <- deps_pkgs[!deps_pkgs %in% rownames(available)]
+
+  deps_pkgs <- deps_pkgs[!deps_pkgs %in% exclude]
   deps_pkgs <- set_names(deps_pkgs)
 
   if (!length(deps_pkgs)) {
