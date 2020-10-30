@@ -62,6 +62,9 @@ revdep_check_against_cran <- function(dir,
     }
   })
 
+  checks_dir <- fs::path(dir, "checks")
+  fs::dir_create(checks_dir)
+
   async::synchronise(
     async::when_any(
       async_tick(),
@@ -199,7 +202,7 @@ on_load(async_check_package %<~% async(function(dir, pkg_name) {
 }))
 
 async_px_install_library <- function(dir, pkg_name, quiet = FALSE, env = character()) {
-  lib_dir <- fs::path(dir, pkg_name, "library")
+  lib_dir <- fs::path(dir, "checks", pkg_name, "library")
   fs::dir_create(lib_dir)
 
   # Create local crancache
@@ -272,7 +275,7 @@ async_px_install <- function(lib_dir,
 }
 
 async_px_download_package <- function(dir, pkg_name) {
-  pkg_dir <- fs::path(dir, pkg_name)
+  pkg_dir <- fs::path(dir, "checks", pkg_name)
   fs::dir_create(pkg_dir)
 
   func <- function(pkg_name, dir, repos) {
@@ -292,11 +295,8 @@ async_px_download_package <- function(dir, pkg_name) {
 }
 
 on_load(async_px_check %<~% async(function(dir, pkg_name, env = character()) {
-  pkg_dir <- fs::path(dir, pkg_name)
-  libdir <- fs::path(pkg_dir, "library")
-
-  check_dir <- fs::path(pkg_dir, "check")
-  fs::dir_create(check_dir)
+  pkg_dir <- fs::path(dir, "checks", pkg_name)
+  lib_dir <- fs::path(pkg_dir, "library")
 
   tarball <- revdepcheck:::latest_file(dir(pkg_dir, pattern = "\\.tar\\.gz$", full.names = TRUE))
   if (length(tarball) == 0) {
@@ -313,8 +313,8 @@ on_load(async_px_check %<~% async(function(dir, pkg_name, env = character()) {
     c("R_ENVIRON_USER" = tempdir(), "R_LIBS" = "", "NO_COLOR" = "true", env),
     rcmdcheck::rcmdcheck_process$new(
       path = tarball,
-      libpath = libdir,
-      args = c("--no-manual", "--no-build-vignettes", "-o", check_dir),
+      libpath = lib_dir,
+      args = c("--no-manual", "--no-build-vignettes", "-o", pkg_dir),
       stdout = stdout,
       stderr = stderr
     )
