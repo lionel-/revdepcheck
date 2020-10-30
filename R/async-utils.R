@@ -1,4 +1,26 @@
 
+`%<~%` <- function(lhs, rhs, env = caller_env()) {
+  env_bind_lazy(env, !!substitute(lhs) := !!substitute(rhs), .eval_env = env)
+}
+
+on_load <- function(expr, env = topenv(caller_env())) {
+  callback <- function() eval_bare(expr, env)
+
+  hook <- env$.__rlang_hook__.
+  env$.__rlang_hook__. <- list2(!!!hook, callback)
+}
+run_on_load <- function(env = topenv(caller_env())) {
+  hook <- env$.__rlang_hook__.
+  env_unbind(env, ".__rlang_hook__.")
+
+  for (callback in hook) {
+    callback()
+  }
+
+  NULL
+}
+
+
 # {coro} operations for the {async} package
 
 .__coro_async_ops__. <- coro::async_ops(
@@ -17,6 +39,12 @@ as_deferred <- function(x) {
     async::async_constant(x)
   }
 }
+
+
+on_load(async_catch %<~% async(function(expr) {
+  tryCatch(await(expr), error = identity)
+}))
+
 
 async_r <- function(func, args = list(), ...) {
   async::run_r_process(func, args, ...)$then(function(x) x$result)
@@ -55,26 +83,4 @@ async_px <- function(px) {
       if (!is.null(id)) async:::get_default_event_loop()$cancel(id)
     }
   )
-}
-
-`%<~%` <- function(lhs, rhs, env = caller_env()) {
-  env_bind_lazy(env, !!substitute(lhs) := !!substitute(rhs), .eval_env = env)
-}
-
-on_load <- function(expr, env = topenv(caller_env())) {
-  callback <- function() eval_bare(expr, env)
-
-  hook <- env$.__rlang_hook__.
-  env$.__rlang_hook__. <- list2(!!!hook, callback)
-}
-
-run_on_load <- function(env = topenv(caller_env())) {
-  hook <- env$.__rlang_hook__.
-  env_unbind(env, ".__rlang_hook__.")
-
-  for (callback in hook) {
-    callback()
-  }
-
-  NULL
 }

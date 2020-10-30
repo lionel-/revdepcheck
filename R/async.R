@@ -32,7 +32,8 @@ revdep_check_against_cran <- function(dir,
   async::synchronise(
     async::async_map(
       pkgs,
-      function(pkg) async_compare_to_cran(dir, pkg, flavour_pattern),
+      # FIXME: px errors can't be caught (https://github.com/gaborcsardi/async/issues/60)
+      function(pkg) async_catch(async_compare_to_cran(dir, pkg, flavour_pattern)),
       .limit = num_workers
     )
   )
