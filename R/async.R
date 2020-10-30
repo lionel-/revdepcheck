@@ -40,7 +40,10 @@ revdep_check_against_cran <- function(dir,
   cache_dir <- fs::path(dir, "cache")
   fs::dir_create(cache_dir)
 
-  populate_crancache(cache_dir, pkgs, num_workers = num_workers)
+  results <- populate_crancache(cache_dir, pkgs, num_workers = num_workers)
+
+  # TODO: Don't try these again
+  failed <- map_lgl(results, inherits, "error")
 
 
   status("CHECK", paste0(length(pkgs), " packages"))

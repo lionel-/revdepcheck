@@ -42,7 +42,13 @@ as_deferred <- function(x) {
 
 
 on_load(async_catch %<~% async(function(expr) {
-  tryCatch(await(expr), error = identity)
+  tryCatch(await(expr), error = function(err) {
+    if (inherits(err, "async_rejected")) {
+      err$data$result
+    } else {
+      err
+    }
+  })
 }))
 
 
