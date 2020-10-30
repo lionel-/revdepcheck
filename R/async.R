@@ -29,14 +29,53 @@ revdep_check_against_cran <- function(dir,
                                       pkgs,
                                       num_workers = 2,
                                       flavour_pattern = "devel") {
+  if (is.numeric(pkgs)) {
+    pkgs <- sample(rownames(crancache::available_packages()), size = pkgs)
+  }
+  assert_that(
+    is_character(pkgs),
+    is_character(dir)
+  )
+
   cache_dir <- fs::path(dir, "cache")
   fs::dir_create(cache_dir)
+
   populate_crancache(cache_dir, pkgs, num_workers = num_workers)
 
+
+  status("CHECK", paste0(length(pkgs), " packages"))
+
+  pb <- progress::progress_bar$new(
+    total = length(pkgs),
+    format = "[:current/:total] :elapsedfull | ETA: :eta | :pkg"
+  )
+  current_pkgs <- character()
+
+  tick <- function(n = 1L) {
+    current <- paste0(current_pkgs, collapse = ", ")
+    pb$tick(n, token = list(pkg = current))
+  }
+  async_tick <- async(function() {
+    repeat {
+      tick(0)
+      await(async::delay(1))
+    }
+  })
+
   async::synchronise(
-    async::async_map(pkgs, .limit = num_workers, function(pkg) {
-      async_catch(async_compare_to_cran(dir, pkg, flavour_pattern))
-    })
+    async::when_any(
+      async_tick(),
+      async::async_map(pkgs, .limit = num_workers, async(function(pkg) {
+        current_pkgs <<- c(current_pkgs, pkg)
+
+        out <- await(async_catch(async_compare_to_cran(dir, pkg, flavour_pattern)))
+
+        current_pkgs <<- current_pkgs[-match(pkg, current_pkgs)]
+        tick(1)
+
+        out
+      }))
+    )
   )
 }
 
