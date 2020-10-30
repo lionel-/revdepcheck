@@ -32,7 +32,6 @@ revdep_check_against_cran <- function(dir,
   async::synchronise(
     async::async_map(
       pkgs,
-      # FIXME: px errors can't be caught (https://github.com/gaborcsardi/async/issues/60)
       function(pkg) async_catch(async_compare_to_cran(dir, pkg, flavour_pattern)),
       .limit = num_workers
     )
@@ -70,9 +69,24 @@ async_px_install_library <- function(dir, pkg_name, quiet = FALSE, env = charact
   libdir <- fs::path(dir, pkg_name, "library")
   fs::dir_create(libdir)
 
+  # Create local crancache
+  cache_dir <- fs::path(dir, "cache")
+  fs::dir_create(cache_dir)
+
   func <- function(libdir, packages, quiet, repos) {
+    # Suboptimal: Overwrite default value which is "source" on r-devel
+    local({
+      .Platform$pkgType <- "mac.binary"
+      base <- rlang::ns_env("base")
+      rlang::env_binding_unlock(base, ".Platform")
+      on.exit(rlang::env_binding_lock(base, ".Platform"))
+      rlang::env_bind(base, .Platform = .Platform)
+    })
+
+    # Ensure callr is loaded before changing the libdir
     requireNamespace("callr")
     ip <- crancache::install_packages
+
     withr::with_libpaths(
       libdir,
       {
@@ -81,7 +95,8 @@ async_px_install_library <- function(dir, pkg_name, quiet = FALSE, env = charact
 	  dependencies = FALSE,
 	  lib = libdir[1],
 	  quiet = quiet,
-	  repos = repos
+	  repos = repos,
+          type = "both"  # Needed to build from cached binaries
 	)
 	stopifnot(all(packages %in% rownames(installed.packages(libdir[1]))))
       }
@@ -97,16 +112,19 @@ async_px_install_library <- function(dir, pkg_name, quiet = FALSE, env = charact
     )
   )
 
-  ## CRANCACHE_REPOS makes sure that we only use cached CRAN packages,
-  ## but not packages that were installed from elsewhere
+  # CRANCACHE_REPOS is unset to make sure we cache packages built
+  # locally, which is all packages when installing on r-devel.  We
+  # install in a local cache to avoid polluting the global cache with
+  # packages built on random (possibly patched) R versions.
   async_r(
     func = func,
     args = args,
     system_profile = FALSE,
     user_profile = FALSE,
     env = c(
-      CRANCACHE_REPOS = "cran,bioc",
+      CRANCACHE_REPOS = NULL,
       CRANCACHE_QUIET = if (quiet) "yes" else "no",
+      CRANCACHE_DIR = cache_dir,
       env
     )
   )
