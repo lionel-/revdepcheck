@@ -48,12 +48,15 @@ revdep_check_against_cran <- function(dir,
     failed <- NULL
   }
 
-  results <- populate_crancache(cache_dir, pkgs, num_workers = num_workers, exclude = failed)
+  cache_results <- tryCatch(
+    interrupt = function(...) NULL,
+    populate_crancache(cache_dir, pkgs, num_workers = num_workers, exclude = failed)
+  )
 
   # Update failures
-  has_failed <- map_lgl(results, inherits, "error")
+  has_failed <- map_lgl(cache_results, inherits, "error")
   if (any(has_failed)) {
-    failed <- c(failed, names(results)[has_failed])
+    failed <- c(failed, names(cache_results)[has_failed])
     saveRDS(failed, failed_path)
   }
 
