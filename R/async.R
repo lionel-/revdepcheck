@@ -29,12 +29,31 @@ revdep_check_against_cran <- function(dir,
                                       pkgs,
                                       num_workers = 2,
                                       flavour_pattern = "devel") {
+  cache_dir <- fs::path(dir, "cache")
+  fs::dir_create(cache_dir)
+  populate_crancache(cache_dir, pkgs, num_workers = num_workers)
+
   async::synchronise(
-    async::async_map(
-      pkgs,
-      function(pkg) async_catch(async_compare_to_cran(dir, pkg, flavour_pattern)),
-      .limit = num_workers
-    )
+    async::async_map(pkgs, .limit = num_workers, function(pkg) {
+      async_catch(async_compare_to_cran(dir, pkg, flavour_pattern))
+    })
+  )
+}
+
+populate_crancache <- function(cache_dir, pkgs, num_workers = 2) {
+  lib_dir <- tempfile("temp_crancache")
+  fs::dir_create(lib_dir)
+  on.exit(fs::dir_delete(lib_dir))
+
+  deps_pkgs <- unique(do.call("c", map(deps, `[[`, "package")))
+
+  deps_repos <- do.call("c", map(deps, `[[`, "repos"))
+  deps_repos <- deps_repos[!duplicated(deps_repos)]
+
+  async::synchronise(
+    async::async_map(deps_pkgs, .limit = num_workers, function(pkg) {
+      async_catch(async_px_install(lib_dir, pkg, repos = deps_repos, cache_dir = cache_dir))
+    })
   )
 }
 
