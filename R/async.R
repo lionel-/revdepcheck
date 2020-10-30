@@ -71,6 +71,7 @@ async_px_install_library <- function(dir, pkg_name, quiet = FALSE, env = charact
   fs::dir_create(libdir)
 
   func <- function(libdir, packages, quiet, repos) {
+    requireNamespace("callr")
     ip <- crancache::install_packages
     withr::with_libpaths(
       libdir,
