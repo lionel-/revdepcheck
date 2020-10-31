@@ -18,7 +18,8 @@ async_check_package(dir, pkg)
 \arguments{
 \item{dir}{The directory to perform local checks in.}
 
-\item{pkgs}{A character vector of package names to check.}
+\item{pkgs}{A character vector of package names to check. If a
+number, draw a random sample of CRAN packages of that size.}
 
 \item{flavour_pattern}{A regexp to match against
 \code{\link[rcmdcheck:cran_check_flavours]{rcmdcheck::cran_check_flavours()}}. If multiple matches are
@@ -33,7 +34,11 @@ running checks on a local patched version of R with the CRAN
 results for that package. For this reason, the default value of
 \code{flavour_pattern} is \code{"devel"}
 
-The checks are performed in \code{dir}. To reset the state, delete:
+The checks are performed in \code{dir} and results are saved to file in
+that directory. You can call \code{revdep_check_against_cran()} with new
+packages to test, old results are retained.
+
+To reset the state, delete:
 \itemize{
 \item \code{checks/state.rds} which contains the results of completed checks.
 \item \verb{cache/} which contains the crancache for dependencies.

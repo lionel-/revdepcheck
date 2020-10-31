@@ -17,7 +17,11 @@ NULL
 #' results for that package. For this reason, the default value of
 #' `flavour_pattern` is `"devel"`
 #'
-#' The checks are performed in `dir`. To reset the state, delete:
+#' The checks are performed in `dir` and results are saved to file in
+#' that directory. You can call `revdep_check_against_cran()` with new
+#' packages to test, old results are retained.
+#'
+#' To reset the state, delete:
 #'
 #' - `checks/state.rds` which contains the results of completed checks.
 #' - `cache/` which contains the crancache for dependencies.
@@ -25,7 +29,8 @@ NULL
 #' The `checks/` folders retains the `R CMD check` files.
 #'
 #' @param dir The directory to perform local checks in.
-#' @param pkgs A character vector of package names to check.
+#' @param pkgs A character vector of package names to check. If a
+#'   number, draw a random sample of CRAN packages of that size.
 #' @param pkg_name A package name.
 #' @param flavour_pattern A regexp to match against
 #'   [rcmdcheck::cran_check_flavours()]. If multiple matches are
@@ -44,6 +49,30 @@ revdep_check_against_cran <- function(dir,
     is_character(dir)
   )
   pkgs <- unique(pkgs)
+
+
+  checks_dir <- fs::path(dir, "checks")
+  fs::dir_create(checks_dir)
+
+  state_path <- fs::path(checks_dir, "state.rds")
+  if (fs::file_exists(state_path)) {
+    state <- readRDS(state_path)
+    new <- !pkgs %in% state$pkgs
+    state$pkgs <- c(state$pkgs, pkgs[new])
+    state$remaining <- c(state$remaining, pkgs[new])
+  } else {
+    state <- list(
+      pkgs = pkgs,
+      remaining = pkgs,
+      results = list()
+    )
+  }
+  on.exit(saveRDS(state, state_path))
+
+  if (!length(state$remaining)) {
+    return(state$results)
+  }
+
 
   writeLines("")
   status("INIT", "Populating package cache")
@@ -73,24 +102,6 @@ revdep_check_against_cran <- function(dir,
 
 
   status("CHECK", paste0(length(state$pkgs), " packages"))
-
-  checks_dir <- fs::path(dir, "checks")
-  fs::dir_create(checks_dir)
-
-  state_path <- fs::path(checks_dir, "state.rds")
-  if (fs::file_exists(state_path)) {
-    state <- readRDS(state_path)
-    new <- !pkgs %in% state$pkgs
-    state$pkgs <- c(state$pkgs, pkgs[new])
-    state$remaining <- c(state$remaining, pkgs[new])
-  } else {
-    state <- list(
-      pkgs = pkgs,
-      remaining = pkgs,
-      results = list()
-    )
-  }
-  on.exit(saveRDS(state, state_path))
 
   pb <- progress::progress_bar$new(
     total = length(state$pkgs),
