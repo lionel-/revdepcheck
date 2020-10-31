@@ -67,7 +67,7 @@ revdep_check_against_cran <- function(dir,
       results = list()
     )
   }
-  on.exit(saveRDS(state, state_path))
+  on.exit(suspendInterrupts(saveRDS(state, state_path)))
 
   if (!length(state$remaining)) {
     return(state$results)
@@ -134,13 +134,15 @@ revdep_check_against_cran <- function(dir,
 
         out <- await(async_catch(async_compare_to_cran(dir, pkg, flavour_pattern)))
 
-        state$results <<- list2(!!!state$results, !!pkg := out)
-        state$remaining <<- state$remaining[-match(pkg, state$remaining)]
-        current_pkgs <<- current_pkgs[-match(pkg, current_pkgs)]
+        suspendInterrupts({
+          state$results <<- list2(!!!state$results, !!pkg := out)
+          state$remaining <<- state$remaining[-match(pkg, state$remaining)]
+          current_pkgs <<- current_pkgs[-match(pkg, current_pkgs)]
+        })
 
         n <<- n + 1
         if (n %% 20 == 0) {
-          saveRDS(state, state_path)
+          suspendInterrupts(aveRDS(state, state_path))
         }
 
         tick(1)
