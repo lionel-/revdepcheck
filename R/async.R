@@ -23,14 +23,19 @@ NULL
 #'
 #' To reset the state, delete:
 #'
-#' - `checks/state.rds` which contains the results of completed checks.
+#' - `checks/state.rds` which contains the results of completed
+#'   checks. Supplying `pkgs` wrapped in `I()` has the effect of
+#'   deleting that file (but not the crancache).
+#'
 #' - `cache/` which contains the crancache for dependencies.
 #'
 #' The `checks/` folders retains the `R CMD check` files.
 #'
 #' @param dir The directory to perform local checks in.
 #' @param pkgs A character vector of package names to check. If a
-#'   number, draw a random sample of CRAN packages of that size.
+#'   number, draw a random sample of CRAN packages of that size. If
+#'   wrapped in `I()`, existing results or remaining packages to check
+#'   are forgotten and only the packages in `pkgs` will be checked.
 #' @param pkg_name A package name.
 #' @param flavour_pattern A regexp to match against
 #'   [rcmdcheck::cran_check_flavours()]. If multiple matches are
@@ -41,6 +46,15 @@ revdep_check_against_cran <- function(dir,
                                       pkgs = character(),
                                       num_workers = 2,
                                       flavour_pattern = "devel") {
+  checks_dir <- fs::path(dir, "checks")
+  fs::dir_create(checks_dir)
+
+  state_path <- fs::path(checks_dir, "state.rds")
+  if (inherits(pkgs, "AsIs") && fs::file_exists(state_path)) {
+    fs::file_delete(state_path)
+    pkgs <- unclass(pkgs)
+  }
+
   if (is.numeric(pkgs)) {
     pkgs <- sample(rownames(crancache::available_packages()), size = pkgs)
   }
@@ -50,11 +64,6 @@ revdep_check_against_cran <- function(dir,
   )
   pkgs <- unique(pkgs)
 
-
-  checks_dir <- fs::path(dir, "checks")
-  fs::dir_create(checks_dir)
-
-  state_path <- fs::path(checks_dir, "state.rds")
   if (fs::file_exists(state_path)) {
     state <- readRDS(state_path)
     new <- !pkgs %in% state$pkgs

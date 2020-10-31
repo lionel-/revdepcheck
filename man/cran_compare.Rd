@@ -19,7 +19,9 @@ async_check_package(dir, pkg)
 \item{dir}{The directory to perform local checks in.}
 
 \item{pkgs}{A character vector of package names to check. If a
-number, draw a random sample of CRAN packages of that size.}
+number, draw a random sample of CRAN packages of that size. If
+wrapped in \code{I()}, existing results or remaining packages to check
+are forgotten and only the packages in \code{pkgs} will be checked.}
 
 \item{flavour_pattern}{A regexp to match against
 \code{\link[rcmdcheck:cran_check_flavours]{rcmdcheck::cran_check_flavours()}}. If multiple matches are
@@ -40,7 +42,9 @@ packages to test, old results are retained.
 
 To reset the state, delete:
 \itemize{
-\item \code{checks/state.rds} which contains the results of completed checks.
+\item \code{checks/state.rds} which contains the results of completed
+checks. Supplying \code{pkgs} wrapped in \code{I()} has the effect of
+deleting that file (but not the crancache).
 \item \verb{cache/} which contains the crancache for dependencies.
 }
 
