@@ -43,6 +43,7 @@ revdep_check_against_cran <- function(dir,
     is_character(pkgs),
     is_character(dir)
   )
+  pkgs <- unique(pkgs)
 
   writeLines("")
   status("INIT", "Populating package cache")
@@ -60,7 +61,7 @@ revdep_check_against_cran <- function(dir,
 
   cache_results <- tryCatch(
     interrupt = function(...) NULL,
-    populate_crancache(cache_dir, pkgs, num_workers = num_workers, exclude = failed)
+    populate_crancache(cache_dir, state$pkgs, num_workers = num_workers, exclude = failed)
   )
 
   # Update failures
@@ -71,7 +72,7 @@ revdep_check_against_cran <- function(dir,
   }
 
 
-  status("CHECK", paste0(length(pkgs), " packages"))
+  status("CHECK", paste0(length(state$pkgs), " packages"))
 
   checks_dir <- fs::path(dir, "checks")
   fs::dir_create(checks_dir)
@@ -79,8 +80,12 @@ revdep_check_against_cran <- function(dir,
   state_path <- fs::path(checks_dir, "state.rds")
   if (fs::file_exists(state_path)) {
     state <- readRDS(state_path)
+    new <- !pkgs %in% state$pkgs
+    state$pkgs <- c(state$pkgs, pkgs[new])
+    state$remaining <- c(state$remaining, pkgs[new])
   } else {
     state <- list(
+      pkgs = pkgs,
       remaining = pkgs,
       results = list()
     )
@@ -88,7 +93,7 @@ revdep_check_against_cran <- function(dir,
   on.exit(saveRDS(state, state_path))
 
   pb <- progress::progress_bar$new(
-    total = length(pkgs),
+    total = length(state$pkgs),
     format = "[:current/:total] :elapsedfull | ETA: :eta | :pkg"
   )
   current_pkgs <- character()
@@ -106,7 +111,7 @@ revdep_check_against_cran <- function(dir,
       await(async::delay(1))
     }
   })
-  tick(length(pkgs) - length(state$remaining))
+  tick(length(state$pkgs) - length(state$remaining))
 
   n <- 0
 
@@ -132,6 +137,10 @@ revdep_check_against_cran <- function(dir,
       }))
     )
   )
+
+  if (length(state$results) != length(state$pkgs)) {
+    abort("Internal error: Results are missing.")
+  }
 
   status("DONE")
   state$results
