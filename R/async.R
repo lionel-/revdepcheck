@@ -304,14 +304,6 @@ async_px_install_library <- function(dir, pkg_name, quiet = FALSE, env = charact
 
   opts <- revdepcheck:::deps_opts(pkg_name)
 
-  failed_path <- fs::path(dir, "install-failed.rds")
-  if (fs::file_exists(failed_path)) {
-    failed <- readRDS(failed_path)
-    if (any(opts$package %in% failed)) {
-      abort(sprintf("Can't install dependencies for package %s.", pkg_name))
-    }
-  }
-
   async_px_install(
     lib_dir = lib_dir,
     pkgs = opts$package,
