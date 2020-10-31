@@ -32,4 +32,12 @@ Compare local checks against CRAN checks. This can be useful for
 running checks on a local patched version of R with the CRAN
 results for that package. For this reason, the default value of
 \code{flavour_pattern} is \code{"devel"}
+
+The checks are performed in \code{dir}. To reset the state, delete:
+\itemize{
+\item \code{checks/state.rds} which contains the results of completed checks.
+\item \verb{cache/} which contains the crancache for dependencies.
+}
+
+The \verb{checks/} folders retains the \verb{R CMD check} files.
 }

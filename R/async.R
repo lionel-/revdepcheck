@@ -17,6 +17,13 @@ NULL
 #' results for that package. For this reason, the default value of
 #' `flavour_pattern` is `"devel"`
 #'
+#' The checks are performed in `dir`. To reset the state, delete:
+#'
+#' - `checks/state.rds` which contains the results of completed checks.
+#' - `cache/` which contains the crancache for dependencies.
+#'
+#' The `checks/` folders retains the `R CMD check` files.
+#'
 #' @param dir The directory to perform local checks in.
 #' @param pkgs A character vector of package names to check.
 #' @param pkg_name A package name.
@@ -66,6 +73,20 @@ revdep_check_against_cran <- function(dir,
 
   status("CHECK", paste0(length(pkgs), " packages"))
 
+  checks_dir <- fs::path(dir, "checks")
+  fs::dir_create(checks_dir)
+
+  state_path <- fs::path(checks_dir, "state.rds")
+  if (fs::file_exists(state_path)) {
+    state <- readRDS(state_path)
+  } else {
+    state <- list(
+      remaining = pkgs,
+      results = list()
+    )
+  }
+  on.exit(saveRDS(state, state_path))
+
   pb <- progress::progress_bar$new(
     total = length(pkgs),
     format = "[:current/:total] :elapsedfull | ETA: :eta | :pkg"
@@ -78,29 +99,42 @@ revdep_check_against_cran <- function(dir,
   }
   async_tick <- async(function() {
     repeat {
+      if (pb$finished) {
+        return()
+      }
       tick(0)
       await(async::delay(1))
     }
   })
+  tick(length(pkgs) - length(state$remaining))
 
-  checks_dir <- fs::path(dir, "checks")
-  fs::dir_create(checks_dir)
+  n <- 0
 
   async::synchronise(
     async::when_any(
       async_tick(),
-      async::async_map(pkgs, .limit = num_workers, async(function(pkg) {
+      async::async_map(state$remaining, .limit = num_workers, async(function(pkg) {
         current_pkgs <<- c(current_pkgs, pkg)
 
         out <- await(async_catch(async_compare_to_cran(dir, pkg, flavour_pattern)))
 
+        state$results <<- list2(!!!state$results, !!pkg := out)
+        state$remaining <<- state$remaining[-match(pkg, state$remaining)]
         current_pkgs <<- current_pkgs[-match(pkg, current_pkgs)]
-        tick(1)
 
+        n <<- n + 1
+        if (n %% 20 == 0) {
+          saveRDS(state, state_path)
+        }
+
+        tick(1)
         out
       }))
     )
   )
+
+  status("DONE")
+  state$results
 }
 
 populate_crancache <- function(cache_dir, pkgs, num_workers = 2, exclude = NULL) {
@@ -147,6 +181,9 @@ populate_crancache <- function(cache_dir, pkgs, num_workers = 2, exclude = NULL)
   }
   async_tick <- async(function() {
     repeat {
+      if (pb$finished) {
+        return()
+      }
       tick(0)
       await(async::delay(1))
     }
