@@ -8,7 +8,7 @@
 \usage{
 revdep_check_against_cran(
   dir,
-  pkgs,
+  pkgs = character(),
   num_workers = 2,
   flavour_pattern = "devel"
 )

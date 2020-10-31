@@ -38,7 +38,7 @@ NULL
 #'   check to compare against.
 #' @export
 revdep_check_against_cran <- function(dir,
-                                      pkgs,
+                                      pkgs = character(),
                                       num_workers = 2,
                                       flavour_pattern = "devel") {
   if (is.numeric(pkgs)) {
@@ -69,6 +69,9 @@ revdep_check_against_cran <- function(dir,
   }
   on.exit(suspendInterrupts(saveRDS(state, state_path)))
 
+  if (!length(state$pkgs)) {
+    abort("No packages to check.")
+  }
   if (!length(state$remaining)) {
     return(state$results)
   }
