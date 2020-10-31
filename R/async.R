@@ -37,6 +37,9 @@ revdep_check_against_cran <- function(dir,
     is_character(dir)
   )
 
+  writeLines("")
+  status("INIT", "Populating package cache")
+
   cache_dir <- fs::path(dir, "cache")
   fs::dir_create(cache_dir)
 
@@ -131,9 +134,6 @@ populate_crancache <- function(cache_dir, pkgs, num_workers = 2, exclude = NULL)
   if (!length(deps_pkgs)) {
     return()
   }
-
-
-  status("INIT", "Populating package cache")
 
   pb <- progress::progress_bar$new(
     total = length(deps_pkgs),
