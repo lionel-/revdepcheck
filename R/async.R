@@ -138,28 +138,30 @@ revdep_check_against_cran <- function(dir,
 
   n <- 0
 
+  async_compare_one <- async(function(pkg) {
+    current_pkgs <<- c(current_pkgs, pkg)
+
+    out <- await(async_catch(async_compare_to_cran(dir, pkg, flavour_pattern)))
+
+    suspendInterrupts({
+      state$results <<- list2(!!!state$results, !!pkg := out)
+      state$remaining <<- state$remaining[-match(pkg, state$remaining)]
+      current_pkgs <<- current_pkgs[-match(pkg, current_pkgs)]
+    })
+
+    n <<- n + 1
+    if (n %% 20 == 0) {
+      suspendInterrupts(saveRDS(state, state_path))
+    }
+
+    tick(1)
+    out
+  })
+
   async::synchronise(
     async::when_any(
       async_tick(),
-      async::async_map(state$remaining, .limit = num_workers, async(function(pkg) {
-        current_pkgs <<- c(current_pkgs, pkg)
-
-        out <- await(async_catch(async_compare_to_cran(dir, pkg, flavour_pattern)))
-
-        suspendInterrupts({
-          state$results <<- list2(!!!state$results, !!pkg := out)
-          state$remaining <<- state$remaining[-match(pkg, state$remaining)]
-          current_pkgs <<- current_pkgs[-match(pkg, current_pkgs)]
-        })
-
-        n <<- n + 1
-        if (n %% 20 == 0) {
-          suspendInterrupts(aveRDS(state, state_path))
-        }
-
-        tick(1)
-        out
-      }))
+      async::async_map(state$remaining, .limit = num_workers, function(...) async_compare_one(...))
     )
   )
 
@@ -223,24 +225,26 @@ populate_crancache <- function(cache_dir, pkgs, num_workers = 2, exclude = NULL)
     }
   })
 
+  async_install_one <- async(function(pkg) {
+    current_pkgs <<- c(current_pkgs, pkg)
+
+    out <- await(async_catch(async_px_install(
+      lib_dir,
+      pkg,
+      repos = deps_repos,
+      cache_dir = cache_dir
+    )))
+
+    current_pkgs <<- current_pkgs[-match(pkg, current_pkgs)]
+    tick(1)
+
+    out
+  })
+
   results <- async::synchronise(
     async::when_any(
       async_tick(),
-      async::async_map(deps_pkgs, .limit = num_workers, async(function(pkg) {
-        current_pkgs <<- c(current_pkgs, pkg)
-
-        out <- await(async_catch(async_px_install(
-          lib_dir,
-          pkg,
-          repos = deps_repos,
-          cache_dir = cache_dir
-        )))
-
-        current_pkgs <<- current_pkgs[-match(pkg, current_pkgs)]
-        tick(1)
-
-        out
-      }))
+      async::async_map(deps_pkgs, .limit = num_workers, function(...) async_install_one(...))
     )
   )
   pb$terminate()
