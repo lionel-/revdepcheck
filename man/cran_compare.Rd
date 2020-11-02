@@ -2,11 +2,11 @@
 % Please edit documentation in R/async.R
 \name{cran_compare}
 \alias{cran_compare}
-\alias{revdep_check_against_cran}
+\alias{check_against_cran}
 \alias{async_check_package}
 \title{Compare local checks to CRAN checks}
 \usage{
-revdep_check_against_cran(
+check_against_cran(
   dir,
   pkgs = character(),
   num_workers = 2,
@@ -37,7 +37,7 @@ results for that package. For this reason, the default value of
 \code{flavour_pattern} is \code{"devel"}
 
 The checks are performed in \code{dir} and results are saved to file in
-that directory. You can call \code{revdep_check_against_cran()} with new
+that directory. You can call \code{check_against_cran()} with new
 packages to test, old results are retained.
 
 To reset the state, delete:

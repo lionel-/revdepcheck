@@ -18,7 +18,7 @@ NULL
 #' `flavour_pattern` is `"devel"`
 #'
 #' The checks are performed in `dir` and results are saved to file in
-#' that directory. You can call `revdep_check_against_cran()` with new
+#' that directory. You can call `check_against_cran()` with new
 #' packages to test, old results are retained.
 #'
 #' To reset the state, delete:
@@ -42,10 +42,10 @@ NULL
 #'   found, the first element is used. This determines which CRAN
 #'   check to compare against.
 #' @export
-revdep_check_against_cran <- function(dir,
-                                      pkgs = character(),
-                                      num_workers = 2,
-                                      flavour_pattern = "devel") {
+check_against_cran <- function(dir,
+                               pkgs = character(),
+                               num_workers = 2,
+                               flavour_pattern = "devel") {
   checks_dir <- fs::path(dir, "checks")
   fs::dir_create(checks_dir)
 
