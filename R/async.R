@@ -420,12 +420,10 @@ on_load(async_px_check %<~% async(function(dir, pkg_name, env = character()) {
 
   # Discard errors caused by exit status - we parse results from both
   # stdout and stderr
-  tryCatch(
-    error = identity,
+  tryCatch(error = identity, {
     await(async_px(px))
-  )
-
-  px$parse_results()
+    px$parse_results()
+  })
 }))
 
 async_px_cran_results <- function(pkg, flavour_pattern = "devel") {
