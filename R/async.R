@@ -55,6 +55,13 @@ check_against_cran <- function(dir,
     pkgs <- unclass(pkgs)
   }
 
+  if (is_na(pkgs)) {
+    pkgs <- character()
+    peek <- TRUE
+  } else {
+    peek <- FALSE
+  }
+
   if (is.numeric(pkgs)) {
     pkgs <- sample(rownames(crancache::available_packages()), size = pkgs)
   }
@@ -76,6 +83,11 @@ check_against_cran <- function(dir,
       results = list()
     )
   }
+
+  if (peek) {
+    return(state$results)
+  }
+
   on.exit(suspendInterrupts(saveRDS(state, state_path)))
 
   if (!length(state$pkgs)) {
